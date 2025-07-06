@@ -1,4 +1,4 @@
-﻿/*
+/*
     Copyright (C) 2021 CodeStrikers.org
     This file is part of NETReactorSlayer.
     NETReactorSlayer is free software: you can redistribute it and/or modify
@@ -13,15 +13,15 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using de4dot.blocks;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 using NETReactorSlayer.Core.Abstractions;
 using NETReactorSlayer.Core.Helper;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
 namespace NETReactorSlayer.Core.Stages
 {
@@ -66,8 +66,8 @@ namespace NETReactorSlayer.Core.Stages
         {
             var callCounter = new CallCounter();
             foreach (var type in from x in Context.Module.GetTypes()
-                     where x.Namespace.Equals("") && DotNetUtils.DerivesFromDelegate(x)
-                     select x)
+                                 where x.Namespace.Equals("") && DotNetUtils.DerivesFromDelegate(x)
+                                 select x)
                 if (type.FindStaticConstructor() is { } cctor)
                     foreach (var method in DotNetUtils.GetMethodCalls(cctor).Where(method =>
                                  method.MethodSig.GetParamCount() == 1 &&

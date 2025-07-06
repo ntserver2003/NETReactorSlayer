@@ -34,16 +34,16 @@ namespace NETReactorSlayer.De4dot.Renamer.AsmModules
         public bool HasInterfaceMethod() => Methods.Any(method => method.Owner.TypeDef.IsInterface);
 
         public bool HasGetterOrSetterPropertyMethod() => (from method in Methods
-            where method.Property != null
-            let prop = method.Property
-            where method == prop.GetMethod || method == prop.SetMethod
-            select method).Any();
+                                                          where method.Property != null
+                                                          let prop = method.Property
+                                                          where method == prop.GetMethod || method == prop.SetMethod
+                                                          select method).Any();
 
         public bool HasAddRemoveOrRaiseEventMethod() => (from method in Methods
-            where method.Event != null
-            let evt = method.Event
-            where method == evt.AddMethod || method == evt.RemoveMethod || method == evt.RaiseMethod
-            select method).Any();
+                                                         where method.Event != null
+                                                         let evt = method.Event
+                                                         where method == evt.AddMethod || method == evt.RemoveMethod || method == evt.RaiseMethod
+                                                         select method).Any();
 
         public bool HasProperty() => Methods.Any(method => method.Property != null);
 

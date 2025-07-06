@@ -3,12 +3,20 @@
 	<Import Project="..\NETReactorSlayerCommon.props" />
 
 	<PropertyGroup>
-
-		<Platforms>AnyCPU</Platforms>
+		<Platform>x86</Platform>
 		<OutputPath>..\bin\$(Configuration)\</OutputPath>
 		<OutputType>Exe</OutputType>
-		<Prefer32Bit>true</Prefer32Bit>
+		<TargetFrameworks>net9.0;net7.0;net48</TargetFrameworks>
+		<PlatformTarget>x86</PlatformTarget>
 
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net9.0|AnyCPU'">
+	  <WarningLevel>8</WarningLevel>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net9.0|AnyCPU'">
+	  <WarningLevel>8</WarningLevel>
 	</PropertyGroup>
 
 	<ItemGroup>

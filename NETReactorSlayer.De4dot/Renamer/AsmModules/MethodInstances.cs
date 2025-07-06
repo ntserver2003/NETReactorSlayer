@@ -13,9 +13,9 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-using System.Collections.Generic;
 using de4dot.blocks;
 using dnlib.DotNet;
+using System.Collections.Generic;
 
 namespace NETReactorSlayer.De4dot.Renamer.AsmModules
 {
@@ -24,11 +24,11 @@ namespace NETReactorSlayer.De4dot.Renamer.AsmModules
         public void InitializeFrom(MethodInstances other, GenericInstSig git)
         {
             foreach (var list in other._methodInstances.Values)
-            foreach (var methodInst in list)
-            {
-                var newMethod = GenericArgsSubstitutor.Create(methodInst.MethodRef, git);
-                Add(new MethodInst(methodInst.OrigMethodDef, newMethod));
-            }
+                foreach (var methodInst in list)
+                {
+                    var newMethod = GenericArgsSubstitutor.Create(methodInst.MethodRef, git);
+                    Add(new MethodInst(methodInst.OrigMethodDef, newMethod));
+                }
         }
 
         public void Add(MethodInst methodInst)

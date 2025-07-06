@@ -13,14 +13,14 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text.RegularExpressions;
 using de4dot.blocks;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 using NETReactorSlayer.De4dot.Renamer.AsmModules;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace NETReactorSlayer.De4dot.Renamer
 {
@@ -154,10 +154,10 @@ namespace NETReactorSlayer.De4dot.Renamer
                 var i = 0;
                 var nameFormat = HasFlagsAttribute() ? "flag_{0}" : "const_{0}";
                 foreach (var fieldInfo in from fieldDef in Type.AllFieldsSorted
-                         let fieldInfo = Field(fieldDef)
-                         where !fieldInfo.Renamed
-                         where fieldDef.FieldDef.IsStatic && fieldDef.FieldDef.IsLiteral
-                         select fieldInfo)
+                                          let fieldInfo = Field(fieldDef)
+                                          where !fieldInfo.Renamed
+                                          where fieldDef.FieldDef.IsStatic && fieldDef.FieldDef.IsLiteral
+                                          select fieldInfo)
                 {
                     if (!checker.IsValidFieldName(fieldInfo.OldName))
                         fieldInfo.Rename(string.Format(nameFormat, i));
@@ -439,9 +439,9 @@ namespace NETReactorSlayer.De4dot.Renamer
                 ourMethods.Add(methodDef.MethodDef, methodDef);
 
             foreach (var instructions in from methodDef in Type.AllMethods
-                     where methodDef.MethodDef.Body != null
-                     where !methodDef.MethodDef.IsStatic && !methodDef.MethodDef.IsVirtual
-                     select methodDef.MethodDef.Body.Instructions)
+                                         where methodDef.MethodDef.Body != null
+                                         where !methodDef.MethodDef.IsStatic && !methodDef.MethodDef.IsVirtual
+                                         select methodDef.MethodDef.Body.Instructions)
                 for (var i = 2; i < instructions.Count; i++)
                 {
                     var call = instructions[i];
@@ -462,22 +462,22 @@ namespace NETReactorSlayer.De4dot.Renamer
                     {
                         case Code.Call:
                         case Code.Callvirt:
-                        {
-                            if (instr.Operand is not IMethod calledMethod)
-                                continue;
-                            var calledMethodDef = ourMethods.Find(calledMethod);
-                            if (calledMethodDef == null)
-                                continue;
-                            fieldRef = GetFieldRef(calledMethodDef.MethodDef);
+                            {
+                                if (instr.Operand is not IMethod calledMethod)
+                                    continue;
+                                var calledMethodDef = ourMethods.Find(calledMethod);
+                                if (calledMethodDef == null)
+                                    continue;
+                                fieldRef = GetFieldRef(calledMethodDef.MethodDef);
 
-                            var propDef = calledMethodDef.Property;
-                            if (propDef == null)
-                                continue;
+                                var propDef = calledMethodDef.Property;
+                                if (propDef == null)
+                                    continue;
 
-                            _memberInfos.Property(propDef).SuggestedName = fieldName;
-                            fieldName = "_" + fieldName;
-                            break;
-                        }
+                                _memberInfos.Property(propDef).SuggestedName = fieldName;
+                                fieldName = "_" + fieldName;
+                                break;
+                            }
                         case Code.Ldfld:
                             fieldRef = instr.Operand as IField;
                             break;
@@ -664,9 +664,9 @@ namespace NETReactorSlayer.De4dot.Renamer
             var checker = NameChecker;
 
             foreach (var instructions in from methodDef in Type.AllMethods
-                     where methodDef.MethodDef.Body != null
-                     where !methodDef.MethodDef.IsStatic
-                     select methodDef.MethodDef.Body.Instructions)
+                                         where methodDef.MethodDef.Body != null
+                                         where !methodDef.MethodDef.IsStatic
+                                         select methodDef.MethodDef.Body.Instructions)
                 for (var i = 0; i < instructions.Count - 6; i++)
                 {
                     if (instructions[i].GetParameterIndex() != 0)
@@ -736,11 +736,11 @@ namespace NETReactorSlayer.De4dot.Renamer
             var checker = NameChecker;
 
             foreach (var instructions in from methodDef in Type.AllMethods
-                     where methodDef.MethodDef.Body != null
-                     where !methodDef.MethodDef.IsStatic
-                     select methodDef.MethodDef
+                                         where methodDef.MethodDef.Body != null
+                                         where !methodDef.MethodDef.IsStatic
+                                         select methodDef.MethodDef
                      into method
-                     select method.Body.Instructions)
+                                         select method.Body.Instructions)
                 for (var i = 0; i < instructions.Count - 5; i++)
                 {
                     if (instructions[i].GetParameterIndex() != 0)
@@ -843,13 +843,13 @@ namespace NETReactorSlayer.De4dot.Renamer
         private void FindInitializeComponentMethod(MTypeDef type, MMethodDef possibleInitMethod)
         {
             if ((from methodDef in type.AllMethods
-                    where methodDef.MethodDef.Name == ".ctor"
-                    where methodDef.MethodDef.Body != null
-                    from instr in methodDef.MethodDef.Body.Instructions
-                    where instr.OpCode.Code is Code.Call or Code.Callvirt
-                    select instr).Any(instr => MethodEqualityComparer.CompareDeclaringTypes.Equals(
-                    possibleInitMethod.MethodDef,
-                    instr.Operand as IMethod)))
+                 where methodDef.MethodDef.Name == ".ctor"
+                 where methodDef.MethodDef.Body != null
+                 from instr in methodDef.MethodDef.Body.Instructions
+                 where instr.OpCode.Code is Code.Call or Code.Callvirt
+                 select instr).Any(instr => MethodEqualityComparer.CompareDeclaringTypes.Equals(
+                 possibleInitMethod.MethodDef,
+                 instr.Operand as IMethod)))
                 _memberInfos.Method(possibleInitMethod).SuggestedName = "InitializeComponent";
         }
 

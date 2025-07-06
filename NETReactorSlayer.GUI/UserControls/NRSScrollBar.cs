@@ -1,4 +1,4 @@
-﻿/*
+/*
     Copyright (C) 2021 CodeStrikers.org
     This file is part of NETReactorSlayer.
     NETReactorSlayer is free software: you can redistribute it and/or modify
@@ -13,11 +13,11 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+using NETReactorSlayer.GUI.Properties;
 using System;
 using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
-using NETReactorSlayer.GUI.Properties;
 
 namespace NETReactorSlayer.GUI.UserControls
 {
@@ -118,46 +118,46 @@ namespace NETReactorSlayer.GUI.UserControls
             switch (_isScrolling)
             {
                 case false:
-                {
-                    var thumbHot = _thumbArea.Contains(e.Location);
-                    if (_thumbHot != thumbHot)
                     {
-                        _thumbHot = thumbHot;
-                        Invalidate();
-                    }
+                        var thumbHot = _thumbArea.Contains(e.Location);
+                        if (_thumbHot != thumbHot)
+                        {
+                            _thumbHot = thumbHot;
+                            Invalidate();
+                        }
 
-                    var upArrowHot = _upArrowArea.Contains(e.Location);
-                    if (_upArrowHot != upArrowHot)
-                    {
-                        _upArrowHot = upArrowHot;
-                        Invalidate();
-                    }
+                        var upArrowHot = _upArrowArea.Contains(e.Location);
+                        if (_upArrowHot != upArrowHot)
+                        {
+                            _upArrowHot = upArrowHot;
+                            Invalidate();
+                        }
 
-                    var downArrowHot = _downArrowArea.Contains(e.Location);
-                    if (_downArrowHot != downArrowHot)
-                    {
-                        _downArrowHot = downArrowHot;
-                        Invalidate();
-                    }
+                        var downArrowHot = _downArrowArea.Contains(e.Location);
+                        if (_downArrowHot != downArrowHot)
+                        {
+                            _downArrowHot = downArrowHot;
+                            Invalidate();
+                        }
 
-                    break;
-                }
+                        break;
+                    }
                 case true when e.Button != MouseButtons.Left:
                     // ReSharper disable once AssignNullToNotNullAttribute
                     OnMouseUp(null);
                     return;
                 case true:
-                {
-                    var difference = new Point(e.Location.X - _initialContact.X, e.Location.Y - _initialContact.Y);
+                    {
+                        var difference = new Point(e.Location.X - _initialContact.X, e.Location.Y - _initialContact.Y);
 
-                    var thumbPos = _initialValue - _trackArea.Top;
-                    var newPosition = thumbPos + difference.Y;
+                        var thumbPos = _initialValue - _trackArea.Top;
+                        var newPosition = thumbPos + difference.Y;
 
-                    ScrollToPhysical(newPosition);
-                    UpdateScrollBar();
+                        ScrollToPhysical(newPosition);
+                        UpdateScrollBar();
 
-                    break;
-                }
+                        break;
+                    }
             }
         }
 
@@ -183,11 +183,11 @@ namespace NETReactorSlayer.GUI.UserControls
                     ScrollBy(-1);
                     break;
                 default:
-                {
-                    if (_downArrowClicked)
-                        ScrollBy(1);
-                    break;
-                }
+                    {
+                        if (_downArrowClicked)
+                            ScrollBy(1);
+                        break;
+                    }
             }
         }
 

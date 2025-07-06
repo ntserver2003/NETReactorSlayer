@@ -1,4 +1,4 @@
-﻿/*
+/*
     Copyright (C) 2021 CodeStrikers.org
     This file is part of NETReactorSlayer.
     NETReactorSlayer is free software: you can redistribute it and/or modify
@@ -95,7 +95,7 @@ namespace NETReactorSlayer.Core.Helper
                     emulator.Emulate(instr);
             }
 
-            done:
+        done:
             if (i != newarrIndex + 1)
                 i--;
             newarrIndex = i;
@@ -105,7 +105,7 @@ namespace NETReactorSlayer.Core.Helper
 
         private static int FindNewarr(MethodDef method, int arraySize)
         {
-            for (var i = 0;; i++)
+            for (var i = 0; ; i++)
             {
                 if (!FindNewarr(method, ref i, out var size))
                     return -1;

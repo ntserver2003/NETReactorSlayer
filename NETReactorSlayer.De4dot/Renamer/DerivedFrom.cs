@@ -13,9 +13,9 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+using NETReactorSlayer.De4dot.Renamer.AsmModules;
 using System;
 using System.Collections.Generic;
-using NETReactorSlayer.De4dot.Renamer.AsmModules;
 
 namespace NETReactorSlayer.De4dot.Renamer
 {

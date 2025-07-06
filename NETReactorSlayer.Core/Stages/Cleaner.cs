@@ -1,4 +1,4 @@
-﻿/*
+/*
     Copyright (C) 2021 CodeStrikers.org
     This file is part of NETReactorSlayer.
     NETReactorSlayer is free software: you can redistribute it and/or modify
@@ -13,13 +13,19 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-using System.Collections.Generic;
-using System.Linq;
+
+
+
+
+
+
 using de4dot.blocks;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 using NETReactorSlayer.Core.Abstractions;
 using NETReactorSlayer.Core.Helper;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace NETReactorSlayer.Core.Stages
 {
@@ -174,10 +180,10 @@ namespace NETReactorSlayer.Core.Stages
                      method != Context.Module.EntryPoint))
                     return;
                 foreach (var calledMethod in from calledMethod in DotNetUtils.GetCalledMethods(Context.Module, method)
-                         where calledMethod.IsStatic && calledMethod.Body != null
-                         where DotNetUtils.IsMethod(calledMethod, "System.Void", "()")
-                         where IsEmptyMethod(calledMethod)
-                         select calledMethod)
+                                             where calledMethod.IsStatic && calledMethod.Body != null
+                                             where DotNetUtils.IsMethod(calledMethod, "System.Void", "()")
+                                             where IsEmptyMethod(calledMethod)
+                                             select calledMethod)
                     _methodCallCounter?.Add(calledMethod);
 
                 var numCalls = 0;

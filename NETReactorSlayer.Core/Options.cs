@@ -1,4 +1,4 @@
-﻿/*
+/*
     Copyright (C) 2021 CodeStrikers.org
     This file is part of NETReactorSlayer.
     NETReactorSlayer is free software: you can redistribute it and/or modify
@@ -13,12 +13,12 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using NETReactorSlayer.Core.Abstractions;
 using NETReactorSlayer.Core.Stages;
 using NETReactorSlayer.De4dot.Renamer;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using MemberInfo = System.Reflection.MemberInfo;
 
 namespace NETReactorSlayer.Core
@@ -126,36 +126,36 @@ namespace NETReactorSlayer.Core
                         RemoveStage(typeof(SymbolRenamer));
                         break;
                     case "--rename":
-                    {
-                        var chars = value.ToCharArray();
-                        RenamerFlags = RenamerFlags.RenameMethodArgs | RenamerFlags.RenameGenericParams;
-                        foreach (var @char in chars)
-                            switch (@char)
-                            {
-                                case 'n':
-                                    RenamerFlags |= RenamerFlags.RenameNamespaces;
-                                    break;
-                                case 't':
-                                    RenamerFlags |= RenamerFlags.RenameTypes;
-                                    break;
-                                case 'm':
-                                    RenamerFlags |= RenamerFlags.RenameMethods;
-                                    break;
-                                case 'f':
-                                    RenamerFlags |= RenamerFlags.RenameFields;
-                                    break;
-                                case 'p':
-                                    RenamerFlags |= RenamerFlags.RenameProperties | RenamerFlags.RestoreProperties |
-                                                    RenamerFlags.RestorePropertiesFromNames;
-                                    break;
-                                case 'e':
-                                    RenamerFlags |= RenamerFlags.RenameEvents | RenamerFlags.RestoreEvents |
-                                                    RenamerFlags.RestoreEventsFromNames;
-                                    break;
-                            }
+                        {
+                            var chars = value.ToCharArray();
+                            RenamerFlags = RenamerFlags.RenameMethodArgs | RenamerFlags.RenameGenericParams;
+                            foreach (var @char in chars)
+                                switch (@char)
+                                {
+                                    case 'n':
+                                        RenamerFlags |= RenamerFlags.RenameNamespaces;
+                                        break;
+                                    case 't':
+                                        RenamerFlags |= RenamerFlags.RenameTypes;
+                                        break;
+                                    case 'm':
+                                        RenamerFlags |= RenamerFlags.RenameMethods;
+                                        break;
+                                    case 'f':
+                                        RenamerFlags |= RenamerFlags.RenameFields;
+                                        break;
+                                    case 'p':
+                                        RenamerFlags |= RenamerFlags.RenameProperties | RenamerFlags.RestoreProperties |
+                                                        RenamerFlags.RestorePropertiesFromNames;
+                                        break;
+                                    case 'e':
+                                        RenamerFlags |= RenamerFlags.RenameEvents | RenamerFlags.RestoreEvents |
+                                                        RenamerFlags.RestoreEventsFromNames;
+                                        break;
+                                }
 
-                        break;
-                    }
+                            break;
+                        }
                 }
             }
 
@@ -217,7 +217,7 @@ namespace NETReactorSlayer.Core
             new MethodDecrypter(),
             new ControlFlowDeobfuscator(),
             new AntiManipulationPatcher(),
-            new MethodInliner(),
+            new MethodInliner(),  // one before
             new ProxyCallFixer(),
             new StringDecrypter(),
             new ResourceResolver(),
@@ -225,6 +225,7 @@ namespace NETReactorSlayer.Core
             new CosturaDumper(),
             new TokenDeobfuscator(),
             new BooleanDecrypter(),
+            new MethodInliner(),  // one after BooleanDecrypter
             new StrongNamePatcher(),
             new TypeRestorer(),
             new Cleaner(),

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<Import Project="..\NETReactorSlayerCommon.props" />
 
@@ -6,6 +6,8 @@
 
 		<OutputPath>..\bin\$(Configuration)\</OutputPath>
 		<OutputType>Library</OutputType>
+		<PlatformTarget>AnyCPU</PlatformTarget>
+		<TargetFrameworks>net48;net7.0;net9.0</TargetFrameworks>
 
 	</PropertyGroup>
 
@@ -17,7 +19,7 @@
 		<Reference Include="de4dot.blocks" Condition="'$(IsDotNet)' == 'true'">
 			<HintPath>..\Libs\netcoreapp3.1\de4dot.blocks.dll</HintPath>
 		</Reference>
-		<PackageReference Include="dnlib" Version="4.1.0" />
+		<PackageReference Include="dnlib" Version="4.5.0" />
 
 	</ItemGroup>
 

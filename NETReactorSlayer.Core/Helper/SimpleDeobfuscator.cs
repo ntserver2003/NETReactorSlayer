@@ -1,4 +1,4 @@
-﻿/*
+/*
     Copyright (C) 2021 CodeStrikers.org
     This file is part of NETReactorSlayer.
     NETReactorSlayer is free software: you can redistribute it and/or modify
@@ -13,14 +13,14 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using de4dot.blocks;
 using de4dot.blocks.cflow;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 using NETReactorSlayer.Core.Stages;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace NETReactorSlayer.Core.Helper
 {
@@ -31,7 +31,7 @@ namespace NETReactorSlayer.Core.Helper
             const SimpleDeobfuscatorFlags flags = 0;
             if (method == null || Check(method, SimpleDeobFlags.HasDeobfuscated))
                 return;
-            Deobfuscate(method, delegate(Blocks blocks)
+            Deobfuscate(method, delegate (Blocks blocks)
             {
                 const bool disableNewCfCode = (flags & SimpleDeobfuscatorFlags.DisableConstantsFolderExtraInstrs) > 0U;
                 var cflowDeobfuscator =
@@ -166,6 +166,7 @@ namespace NETReactorSlayer.Core.Helper
                 if (!inlinedMethod || methodToInline.IsPublic)
                     return;
                 Cleaner.AddMethodToBeRemoved(methodToInline);
+                // CodeExplorer was edit:
                 MethodInliner.InlinedMethods++;
             }
         }

@@ -1,4 +1,4 @@
-﻿/*
+/*
     Copyright (C) 2021 CodeStrikers.org
     This file is part of NETReactorSlayer.
     NETReactorSlayer is free software: you can redistribute it and/or modify
@@ -13,13 +13,15 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 using NETReactorSlayer.Core.Abstractions;
 using NETReactorSlayer.Core.Helper;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices;
 
 namespace NETReactorSlayer.Core.Stages
 {
@@ -28,9 +30,10 @@ namespace NETReactorSlayer.Core.Stages
         public void Run(IContext context)
         {
             Context = context;
-            if (_fields.Count == 0)
+            if (int_fields.Count == 0)
                 Initialize();
             long count = 0;
+            long CountInlined = 0;
             foreach (var method in Context.Module.GetTypes().SelectMany(type =>
                          (from x in type.Methods where x.HasBody && x.Body.HasInstructions select x)
                          .ToArray()))
@@ -40,17 +43,49 @@ namespace NETReactorSlayer.Core.Stages
                 SimpleDeobfuscator.DeobfuscateBlocks(method);
             }
 
+
+
+            foreach (var method in Context.Module.GetTypes().SelectMany(type =>
+
+             (from x in type.Methods where x.HasBody && x.Body.HasInstructions select x)
+
+             .ToArray()))
+            {
+                //SimpleDeobfuscator.Deobfuscate(method);
+                CountInlined += InlineBoolean(method);
+                //SimpleDeobfuscator.DeobfuscateBlocks(method);
+            }
+
+
+
+            foreach (var method in Context.Module.GetTypes().SelectMany(type =>
+
+ (from x in type.Methods where x.HasBody && x.Body.HasInstructions select x)
+
+ .ToArray()))
+            {
+                SimpleDeobfuscator.Deobfuscate(method);
+                //CountInlined += InlineBoolean(method);
+                SimpleDeobfuscator.DeobfuscateBlocks(method);
+            }
+
             if (count > 0)
                 Context.Logger.Info(count + " Equations resolved.");
             else
                 Context.Logger.Warn(
                     "Couldn't find any equation to resolve.");
+
+
+
+            if (CountInlined > 0)
+                Context.Logger.Info(CountInlined + "  ints inlined.");
+
         }
 
         private void Initialize()
         {
             FindFieldsStatically();
-            if (_fields.Count < 1)
+            if (int_fields.Count < 1)
                 FindFieldsDynamically();
         }
 
@@ -63,7 +98,27 @@ namespace NETReactorSlayer.Core.Stages
                               x.Fields.Count(f =>
                                   f.FieldType.FullName == "System.Int32" && f.IsAssembly && !f.HasConstant) >= 100))
             {
-                _fields.Clear();
+
+
+                int_fields.Clear();
+
+                byte_fields.Clear();
+                sbyte_fields.Clear();
+
+                char_fields.Clear();
+
+                string_fields.Clear();
+
+                float_fields.Clear();
+
+                double_fields.Clear();
+                short_fields.Clear();
+                ushort_fields.Clear();
+                uint_fields.Clear();
+                long_fields.Clear();
+                ulong_fields.Clear();
+                bool_fields.Clear();
+
                 foreach (var method in type.Methods.Where(x =>
                              x.IsStatic && x.IsAssembly && x.HasBody && x.Body.HasInstructions))
                 {
@@ -85,22 +140,34 @@ namespace NETReactorSlayer.Core.Stages
                                 ? method.Body.Instructions[i + 1]
                                 : null)?.Operand;
                             var value = method.Body.Instructions[i].GetLdcI4Value();
-                            if (key != null && !_fields.ContainsKey(key))
-                                _fields.Add(key, value);
+                            if (key != null && !int_fields.ContainsKey(key))
+                                int_fields.Add(key, value);
                             else if (key != null)
-                                _fields[key] = value;
+                                int_fields[key] = value;
                         }
 
-                    if (_fields.Count != 0)
+                    if (int_fields.Count != 0)
                         typeDef = type;
                     goto Continue;
                 }
             }
 
-            Continue:
+
+
+        Continue:
             if (typeDef != null)
                 Cleaner.AddTypeToBeRemoved(typeDef);
         }
+
+
+
+        // https://www.cnblogs.com/Fred1987/p/18603592
+
+        //copy from,https://gist.github.com/6rube/34b561827f0805f73742541b8b8bb770
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+
+        static extern int MessageBox(IntPtr hWnd, String text, String caption, uint type);
 
         private void FindFieldsDynamically()
         {
@@ -109,7 +176,8 @@ namespace NETReactorSlayer.Core.Stages
                          x => x.IsSealed &&
                               x.HasFields &&
                               x.Fields.Count(f =>
-                                  f.FieldType.FullName == "System.Int32" && f.IsAssembly && !f.HasConstant) >= 100))
+                                  (f.FieldType.FullName == "System.Int32")
+                                  && f.IsAssembly && !f.HasConstant) >= 100))
             {
                 if ((Context.Info.NativeStub && Context.Info.NecroBit)
                     || !Context.Info.UsesReflection)
@@ -118,27 +186,247 @@ namespace NETReactorSlayer.Core.Stages
                     return;
                 }
 
-                _fields.Clear();
+                int_fields.Clear();
 
-                if (type.Fields.Where(x => x.FieldType.FullName == "System.Int32").All(x => x.IsStatic))
-                    foreach (var field in type.Fields.Where(x => x.FieldType.FullName == "System.Int32"))
+                byte_fields.Clear();
+                sbyte_fields.Clear();
+
+                char_fields.Clear();
+
+                string_fields.Clear();
+
+                float_fields.Clear();
+
+                double_fields.Clear();
+                short_fields.Clear();
+                ushort_fields.Clear();
+                uint_fields.Clear();
+                long_fields.Clear();
+                ulong_fields.Clear();
+                bool_fields.Clear();
+
+                bool FirstTime = true;
+
+                if (type.Fields.Where(x => x.FieldType.FullName == "System.Int32" || x.FieldType.FullName == "System.UInt32" ||
+                x.FieldType.FullName == "System.Int16" || x.FieldType.FullName == "System.UInt16" ||
+                x.FieldType.FullName == "System.Int64" || x.FieldType.FullName == "System.UInt64" || x.FieldType.FullName == "System.Boolean" ||
+                x.FieldType.FullName == "System.Byte" || x.FieldType.FullName == "System.SByte" || x.FieldType.FullName == "System.Char" || x.FieldType.FullName == "System.String" ||
+                x.FieldType.FullName == "System.Single" || x.FieldType.FullName == "System.Double").All(x => x.IsStatic))
+                    foreach (var field in type.Fields.Where(x => x.FieldType.FullName == "System.Int32" || x.FieldType.FullName == "System.UInt32" || x.FieldType.FullName == "System.Int64" || x.FieldType.FullName == "System.UInt64" || x.FieldType.FullName == "System.Boolean" ||
+                    x.FieldType.FullName == "System.Int16" || x.FieldType.FullName == "System.UInt16" || x.FieldType.FullName == "System.Byte" || x.FieldType.FullName == "System.SByte" || x.FieldType.FullName == "System.Char" || x.FieldType.FullName == "System.String" || x.FieldType.FullName == "System.Single" || x.FieldType.FullName == "System.Double"))
                         try
                         {
-                            var obj = Context.Assembly.ManifestModule.ResolveField((int)field.MDToken.Raw)
+                            object obj = Context.Assembly.ManifestModule.ResolveField((int)field.MDToken.Raw)
                                 .GetValue(null);
-                            if (obj == null || !int.TryParse(obj.ToString(), out var value))
-                                continue;
-                            if (!_fields.ContainsKey(field))
-                                _fields.Add(field, value);
-                            else
-                                _fields[field] = value;
+
+                            if (obj == null) continue;
+
+                            if (obj is int)
+                            {
+
+                                int value = (int)obj;
+
+                                if (!int_fields.ContainsKey(field))
+
+                                    int_fields.Add(field, value);
+
+                                else
+
+                                    int_fields[field] = value;
+                            }
+
+                            else if (obj is uint)
+                            {
+
+                                uint uvalue = (uint)obj;
+
+                                if (!uint_fields.ContainsKey(field))
+
+                                    uint_fields.Add(field, uvalue);
+
+                                else
+
+                                    uint_fields[field] = uvalue;
+
+                            }
+
+                            if (obj is short)
+                            {
+
+                                short shortvalue = (short)obj;
+
+                                if (!short_fields.ContainsKey(field))
+
+                                    short_fields.Add(field, shortvalue);
+
+                                else
+
+                                    short_fields[field] = shortvalue;
+                            }
+
+                            else if (obj is ushort)
+                            {
+
+                                ushort ushortvalue = (ushort)obj;
+
+                                if (!ushort_fields.ContainsKey(field))
+
+                                    ushort_fields.Add(field, ushortvalue);
+
+                                else
+
+                                    ushort_fields[field] = ushortvalue;
+
+                            }
+
+                            else if (obj is ulong)
+                            {
+
+                                ulong ulvalue = (ulong)obj;
+
+                                if (!ulong_fields.ContainsKey(field))
+
+                                    ulong_fields.Add(field, ulvalue);
+
+                                else
+
+                                    ulong_fields[field] = ulvalue;
+                            }
+
+                            else if (obj is long)
+                            {
+
+                                long lvalue = (long)obj;
+
+                                if (!long_fields.ContainsKey(field))
+
+                                    long_fields.Add(field, lvalue);
+
+                                else
+
+                                    long_fields[field] = lvalue;
+                            }
+
+                            else if (obj is byte)
+                            {
+
+                                byte bvalue = (byte)obj;
+
+                                if (!byte_fields.ContainsKey(field))
+
+                                    byte_fields.Add(field, bvalue);
+
+                                else
+
+                                    byte_fields[field] = bvalue;
+                            }
+
+                            else if (obj is sbyte)
+                            {
+
+                                sbyte svalue = (sbyte)obj;
+
+                                if (!sbyte_fields.ContainsKey(field))
+
+                                    sbyte_fields.Add(field, svalue);
+
+                                else
+
+                                    sbyte_fields[field] = svalue;
+                            }
+
+                            else if (obj is bool)
+                            {
+
+                                bool bvalue = (bool)obj;
+
+                                if (!bool_fields.ContainsKey(field))
+
+                                    bool_fields.Add(field, bvalue);
+
+                                else
+
+                                    bool_fields[field] = bvalue;
+                            }
+
+                            else if (obj is char)
+                            {
+
+                                char charvalue = (char)obj;
+
+                                if (!char_fields.ContainsKey(field))
+
+                                    char_fields.Add(field, charvalue);
+
+                                else
+
+                                    char_fields[field] = charvalue;
+
+                            }
+
+                            else if (obj is string)
+                            {
+
+                                string strvalue = (string)obj;
+
+                                if (!string_fields.ContainsKey(field))
+
+                                    string_fields.Add(field, strvalue);
+
+                                else
+
+                                    string_fields[field] = strvalue;
+
+                            }
+
+                            else if (obj is float)
+
+                            {
+
+                                float fvalue = (float)obj;
+
+                                if (!float_fields.ContainsKey(field))
+
+                                    float_fields.Add(field, fvalue);
+
+                                else
+
+                                    float_fields[field] = fvalue;
+
+                            }
+
+                            else if (obj is double)
+
+                            {
+
+                                double dvalue = (double)obj;
+
+                                if (!double_fields.ContainsKey(field))
+
+                                    double_fields.Add(field, dvalue);
+
+                                else
+
+                                    double_fields[field] = dvalue;
+
+                            }
                         }
-                        catch { }
+                        catch (Exception exc)
+                        {
+                            if (FirstTime)
+                            {
+
+                                MessageBox(new IntPtr(0), exc.ToString(), "Exception on Arithmetic fields", 0);
+
+                                FirstTime = false;
+
+                            }
+                        }
                 else if (type.Fields.Where(x => x.FieldType.FullName == "System.Int32").All(x => !x.IsStatic))
                     foreach (var instances in type.Fields.Where(x => x.FieldType.ToTypeDefOrRef().Equals(type)))
                         try
                         {
-                            var instance = Context.Assembly.ManifestModule.ResolveField((int)instances.MDToken.Raw)
+                            object instance = Context.Assembly.ManifestModule.ResolveField((int)instances.MDToken.Raw)
                                 .GetValue(null);
                             if (instance == null)
                                 continue;
@@ -153,32 +441,319 @@ namespace NETReactorSlayer.Core.Stages
                                     x.MDToken.ToInt32().Equals(runtimeField.MetadataToken));
                                 if (field == null)
                                     continue;
-                                if (runtimeField.GetValue(instance) is not int value)
-                                    continue;
-                                if (!_fields.ContainsKey(field))
-                                    _fields.Add(field, value);
-                                else
-                                    _fields[field] = value;
+
+                                object obj = runtimeField.GetValue(instance);
+
+                                if (obj == null) continue;
+
+                                int value = 0;
+                                if (obj is int)
+                                {
+
+                                    value = (int)obj;
+
+                                    if (!int_fields.ContainsKey(field))
+
+                                        int_fields.Add(field, value);
+
+                                    else
+
+                                        int_fields[field] = value;
+                                }
+
+                                // For non-static fields is only int
+
+                                /*
+
+                                else if (obj is byte)
+
+                                {
+
+                                    byte bvalue = (byte)obj;
+
+                                    if (!byte_fields.ContainsKey(field))
+
+                                        byte_fields.Add(field, bvalue);
+
+                                    else
+
+                                        byte_fields[field] = bvalue;
+
+                                }
+
+                                else if (obj is sbyte)
+
+                                {
+
+                                    sbyte svalue = (sbyte)obj;
+
+                                    if (!sbyte_fields.ContainsKey(field))
+
+                                        sbyte_fields.Add(field, svalue);
+
+                                    else
+
+                                        sbyte_fields[field] = svalue;
+
+                                }
+                                else if (obj is float)
+                                {
+
+                                    float fvalue = (float)obj;
+
+                                    if (!float_fields.ContainsKey(field))
+
+                                        float_fields.Add(field, fvalue);
+
+                                    else
+
+                                        float_fields[field] = fvalue;
+
+                                }
+
+                                else if (obj is double)
+
+                                {
+
+                                    double dvalue = (double)obj;
+
+                                    if (!double_fields.ContainsKey(field))
+
+                                        double_fields.Add(field, dvalue);
+
+                                    else
+
+                                        double_fields[field] = dvalue;
+
+                                }
+
+                                */
+
                             }
 
                             break;
                         }
-                        catch { }
+                        catch (Exception exc)
+                        {
 
-                if (_fields.Count < 100)
+                            if (FirstTime)
+
+                            {
+
+                                MessageBox(new IntPtr(0), exc.ToString(), "Exception on Arithmetic fields", 0);
+
+                                FirstTime = false;
+
+                            }
+                        }
+
+                if (int_fields.Count < 100)
                     continue;
                 typeDef = type;
                 break;
             }
 
-            if (_fields.All(x => x.Value == 0))
+            if (int_fields.All(x => x.Value == 0))
             {
-                _fields.Clear();
+                int_fields.Clear();
                 return;
             }
 
             if (typeDef != null)
                 Cleaner.AddTypeToBeRemoved(typeDef);
+        }
+
+        public static bool IsLdc(Instruction ins)
+
+        {
+
+            switch (ins.OpCode.Code)
+
+            {
+
+                case Code.Ldc_I4_M1:
+
+                case Code.Ldc_I4_0:
+
+                case Code.Ldc_I4_1:
+
+                case Code.Ldc_I4_2:
+
+                case Code.Ldc_I4_3:
+
+                case Code.Ldc_I4_4:
+
+                case Code.Ldc_I4_5:
+
+                case Code.Ldc_I4_6:
+
+                case Code.Ldc_I4_7:
+
+                case Code.Ldc_I4_8:
+
+                case Code.Ldc_I4_S:
+
+                case Code.Ldc_I4:
+
+                    return true;
+
+
+
+                default:
+
+                    return false;
+
+            }
+
+
+
+        }
+
+        private long InlineBoolean(MethodDef method)
+
+        {
+
+
+
+            long count = 0;
+
+
+
+            for (var i = 0; i < method.Body.Instructions.Count; i++)
+                try
+                {
+                    if (method.Body.Instructions[i].OpCode != OpCodes.Call ||
+                        method.Body.Instructions[i].Operand is not MethodDef)
+                        continue;
+
+
+
+                    MethodDef mdef = method.Body.Instructions[i].Operand as MethodDef;
+
+                    if (!mdef.IsStatic) continue;
+
+
+
+                    if (!mdef.HasBody || !mdef.Body.HasInstructions)
+
+                        continue;
+
+
+
+                    /*
+
+                     
+
+	// Token: 0x06000108 RID: 264 RVA: 0x00002622 File Offset: 0x00000822
+
+	.method assembly hidebysig static 
+
+		bool smethod_17 () cil managed 
+
+	{
+
+		// Header Size: 1 byte
+
+		// Code Size: 5 (0x5) bytes
+
+		.maxstack 8
+
+
+
+		/* 0x00000823 14           */
+
+                    //                IL_0000: ldnull
+
+                    ///* 0x00000824 14           */ IL_0001: ldnull
+
+                    ///* 0x00000825 FE01         */ IL_0002: ceq
+
+                    ///* 0x00000827 2A           */ IL_0004: ret
+
+
+
+                    //   } // end of method Class9::smethod_17
+
+                    //  */
+
+
+
+                    if (mdef.Body.Instructions.Count == 4)
+
+                    {
+
+                        if (mdef.Body.Instructions[0].OpCode == OpCodes.Ldnull &&
+
+                        mdef.Body.Instructions[1].OpCode == OpCodes.Ldnull &&
+
+                        mdef.Body.Instructions[3].OpCode == OpCodes.Ret)
+
+                        {
+
+                            if (mdef.Body.Instructions[2].OpCode == OpCodes.Ceq)
+
+                            {
+
+                                method.Body.Instructions[i].OpCode = OpCodes.Ldc_I4_1;
+
+                                method.Body.Instructions[i].Operand = null;
+
+                            }
+
+
+
+                        }
+
+                    }
+
+
+
+                    if (mdef.Body.Instructions.Count != 2)
+
+                        continue;
+
+
+
+                    if (!IsLdc(mdef.Body.Instructions[0]))
+
+                        continue;
+
+
+
+                    if (mdef.Body.Instructions[1].OpCode != OpCodes.Ret)
+
+                        continue;
+
+
+
+                    Instruction ldci = Instruction.CreateLdcI4(mdef.Body.Instructions[0].GetLdcI4Value());
+
+                    method.Body.Instructions[i].OpCode = ldci.OpCode;
+
+                    method.Body.Instructions[i].Operand = ldci.Operand;
+
+                    ldci = null;
+
+                    count++;
+
+
+
+
+
+                }
+
+                catch
+
+                {
+
+
+
+                }
+
+
+
+            return count;
+
         }
 
         private long Arithmetic(MethodDef method)
@@ -189,15 +764,414 @@ namespace NETReactorSlayer.Core.Stages
                 {
                     if ((method.Body.Instructions[i].OpCode != OpCodes.Ldsfld &&
                          method.Body.Instructions[i].OpCode != OpCodes.Ldfld) ||
-                        method.Body.Instructions[i].Operand is not IField ||
-                        !_fields.TryGetValue((IField)method.Body.Instructions[i].Operand, out var value) ||
-                        method.DeclaringType == _fields.First().Key.DeclaringType)
+                        method.Body.Instructions[i].Operand is not IField)
                         continue;
-                    if (method.Body.Instructions[i].OpCode == OpCodes.Ldfld &&
-                        method.Body.Instructions[i - 1].OpCode == OpCodes.Ldsfld)
-                        method.Body.Instructions[i - 1].OpCode = OpCodes.Nop;
-                    method.Body.Instructions[i] = Instruction.CreateLdcI4(value);
-                    count++;
+
+
+
+                    if (int_fields.TryGetValue((IField)method.Body.Instructions[i].Operand, out var value) &&
+
+                    method.DeclaringType != int_fields.First().Key.DeclaringType)
+                    {
+
+                        //if (!((FieldDef)method.Body.Instructions[i].Operand).IsStatic)
+
+                        //{
+
+                        if (method.Body.Instructions[i].OpCode == OpCodes.Ldfld &&
+
+                           method.Body.Instructions[i - 1].OpCode == OpCodes.Ldsfld)
+
+                            method.Body.Instructions[i - 1].OpCode = OpCodes.Nop;
+
+                        //}
+
+
+
+                        Instruction ldci = Instruction.CreateLdcI4(value);
+
+                        method.Body.Instructions[i].OpCode = ldci.OpCode;
+
+                        method.Body.Instructions[i].Operand = ldci.Operand;
+
+                        ldci = null;
+
+                        count++;
+
+
+
+                    }
+
+
+
+                    if (bool_fields.TryGetValue((IField)method.Body.Instructions[i].Operand, out var boolvalue) &&
+
+                    method.DeclaringType != bool_fields.First().Key.DeclaringType)
+                    {
+
+                        //if (!((FieldDef)method.Body.Instructions[i].Operand).IsStatic)
+
+                        //{
+
+                        if (method.Body.Instructions[i].OpCode == OpCodes.Ldfld &&
+
+                           method.Body.Instructions[i - 1].OpCode == OpCodes.Ldsfld)
+
+                            method.Body.Instructions[i - 1].OpCode = OpCodes.Nop;
+
+                        //}
+
+
+
+                        //Instruction ldci = Instruction.CreateLdcI4((int)uivalue);
+
+                        //method.Body.Instructions[i].OpCode = ldci.OpCode;
+
+                        // method.Body.Instructions[i].Operand = ldci.Operand;
+
+
+
+                        if (boolvalue == false)
+
+                        {
+
+                            method.Body.Instructions[i].OpCode = OpCodes.Ldc_I4_0;
+
+                            method.Body.Instructions[i].Operand = null;
+
+                        }
+
+                        else
+
+                        {
+
+                            method.Body.Instructions[i].OpCode = OpCodes.Ldc_I4_1;
+
+                            method.Body.Instructions[i].Operand = null;
+
+                        }
+
+
+
+                        count++;
+
+
+
+                    }
+
+                    if (uint_fields.TryGetValue((IField)method.Body.Instructions[i].Operand, out var uivalue) &&
+
+                    method.DeclaringType != uint_fields.First().Key.DeclaringType)
+                    {
+
+                        //if (!((FieldDef)method.Body.Instructions[i].Operand).IsStatic)
+
+                        //{
+
+                        if (method.Body.Instructions[i].OpCode == OpCodes.Ldfld &&
+
+                           method.Body.Instructions[i - 1].OpCode == OpCodes.Ldsfld)
+
+                            method.Body.Instructions[i - 1].OpCode = OpCodes.Nop;
+
+                        //}
+
+
+
+                        Instruction ldci = Instruction.CreateLdcI4((int)uivalue);
+
+                        method.Body.Instructions[i].OpCode = ldci.OpCode;
+
+                        method.Body.Instructions[i].Operand = ldci.Operand;
+
+                        ldci = null;
+
+                        count++;
+
+
+
+                    }
+
+
+
+                    if (long_fields.TryGetValue((IField)method.Body.Instructions[i].Operand, out var lvalue) &&
+
+                    method.DeclaringType != long_fields.First().Key.DeclaringType)
+                    {
+
+                        //if (!((FieldDef)method.Body.Instructions[i].Operand).IsStatic)
+
+                        //{
+
+                        if (method.Body.Instructions[i].OpCode == OpCodes.Ldfld &&
+
+                           method.Body.Instructions[i - 1].OpCode == OpCodes.Ldsfld)
+
+                            method.Body.Instructions[i - 1].OpCode = OpCodes.Nop;
+
+                        //}
+
+                        method.Body.Instructions[i].OpCode = OpCodes.Ldc_I8;
+
+                        method.Body.Instructions[i].Operand = (long)lvalue;
+
+                        count++;
+
+
+
+                    }
+
+
+
+                    if (ulong_fields.TryGetValue((IField)method.Body.Instructions[i].Operand, out var ulvalue) &&
+
+                    method.DeclaringType != ulong_fields.First().Key.DeclaringType)
+                    {
+
+                        //if (!((FieldDef)method.Body.Instructions[i].Operand).IsStatic)
+
+                        //{
+
+                        if (method.Body.Instructions[i].OpCode == OpCodes.Ldfld &&
+
+                           method.Body.Instructions[i - 1].OpCode == OpCodes.Ldsfld)
+
+                            method.Body.Instructions[i - 1].OpCode = OpCodes.Nop;
+
+                        //}
+
+                        method.Body.Instructions[i].OpCode = OpCodes.Ldc_I8;
+
+                        method.Body.Instructions[i].Operand = (long)ulvalue;
+
+                        count++;
+
+
+
+                    }
+
+
+
+                    if (short_fields.TryGetValue((IField)method.Body.Instructions[i].Operand, out var svalue) &&
+
+                    method.DeclaringType != short_fields.First().Key.DeclaringType)
+                    {
+
+                        //if (!((FieldDef)method.Body.Instructions[i].Operand).IsStatic)
+
+                        //{
+
+                        if (method.Body.Instructions[i].OpCode == OpCodes.Ldfld &&
+
+                           method.Body.Instructions[i - 1].OpCode == OpCodes.Ldsfld)
+
+                            method.Body.Instructions[i - 1].OpCode = OpCodes.Nop;
+
+                        //}
+
+
+
+                        Instruction ldci = Instruction.CreateLdcI4((int)svalue);
+
+                        method.Body.Instructions[i].OpCode = ldci.OpCode;
+
+                        method.Body.Instructions[i].Operand = ldci.Operand;
+
+                        ldci = null;
+
+                        count++;
+
+
+
+                    }
+
+
+
+                    if (ushort_fields.TryGetValue((IField)method.Body.Instructions[i].Operand, out var usvalue) &&
+
+                    method.DeclaringType != ushort_fields.First().Key.DeclaringType)
+                    {
+
+                        //if (!((FieldDef)method.Body.Instructions[i].Operand).IsStatic)
+
+                        //{
+
+                        if (method.Body.Instructions[i].OpCode == OpCodes.Ldfld &&
+
+                           method.Body.Instructions[i - 1].OpCode == OpCodes.Ldsfld)
+
+                            method.Body.Instructions[i - 1].OpCode = OpCodes.Nop;
+
+                        //}
+
+
+
+                        Instruction ldci = Instruction.CreateLdcI4((int)usvalue);
+
+                        method.Body.Instructions[i].OpCode = ldci.OpCode;
+
+                        method.Body.Instructions[i].Operand = ldci.Operand;
+
+                        ldci = null;
+
+                        count++;
+
+
+
+                    }
+
+
+
+                    if (byte_fields.TryGetValue((IField)method.Body.Instructions[i].Operand, out var bvalue) &&
+
+                    method.DeclaringType != byte_fields.First().Key.DeclaringType)
+                    {
+
+                        if (method.Body.Instructions[i].OpCode == OpCodes.Ldfld &&
+
+                           method.Body.Instructions[i - 1].OpCode == OpCodes.Ldsfld)
+
+                            method.Body.Instructions[i - 1].OpCode = OpCodes.Nop;
+
+
+
+                        Instruction ldci = Instruction.CreateLdcI4((int)bvalue);
+
+                        method.Body.Instructions[i].OpCode = ldci.OpCode;
+
+                        method.Body.Instructions[i].Operand = ldci.Operand;
+
+                        ldci = null;
+
+                        count++;
+
+                    }
+
+
+
+                    if (sbyte_fields.TryGetValue((IField)method.Body.Instructions[i].Operand, out var sbvalue) &&
+
+                    method.DeclaringType != sbyte_fields.First().Key.DeclaringType)
+                    {
+
+                        if (method.Body.Instructions[i].OpCode == OpCodes.Ldfld &&
+
+                           method.Body.Instructions[i - 1].OpCode == OpCodes.Ldsfld)
+
+                            method.Body.Instructions[i - 1].OpCode = OpCodes.Nop;
+
+
+
+                        Instruction ldci = Instruction.CreateLdcI4((int)sbvalue);
+
+                        method.Body.Instructions[i].OpCode = ldci.OpCode;
+
+                        method.Body.Instructions[i].Operand = ldci.Operand;
+
+                        ldci = null;
+
+                        count++;
+
+                    }
+
+
+
+                    if (char_fields.TryGetValue((IField)method.Body.Instructions[i].Operand, out var cvalue) &&
+
+                    method.DeclaringType != char_fields.First().Key.DeclaringType)
+                    {
+
+                        if (method.Body.Instructions[i].OpCode == OpCodes.Ldfld &&
+
+                           method.Body.Instructions[i - 1].OpCode == OpCodes.Ldsfld)
+
+                            method.Body.Instructions[i - 1].OpCode = OpCodes.Nop;
+
+
+
+                        Instruction ldci = Instruction.CreateLdcI4((int)cvalue);
+
+                        method.Body.Instructions[i].OpCode = ldci.OpCode;
+
+                        method.Body.Instructions[i].Operand = ldci.Operand;
+
+                        ldci = null;
+
+                        count++;
+
+                    }
+
+
+
+                    if (string_fields.TryGetValue((IField)method.Body.Instructions[i].Operand, out var stringvalue) &&
+
+                    method.DeclaringType != string_fields.First().Key.DeclaringType)
+                    {
+
+                        if (method.Body.Instructions[i].OpCode == OpCodes.Ldfld &&
+
+                           method.Body.Instructions[i - 1].OpCode == OpCodes.Ldsfld)
+
+                            method.Body.Instructions[i - 1].OpCode = OpCodes.Nop;
+
+
+
+                        method.Body.Instructions[i].OpCode = OpCodes.Ldstr;
+
+                        method.Body.Instructions[i].Operand = (string)stringvalue;
+
+                        count++;
+
+
+
+                    }
+
+
+
+                    if (float_fields.TryGetValue((IField)method.Body.Instructions[i].Operand, out var fvalue) &&
+
+                    method.DeclaringType != float_fields.First().Key.DeclaringType)
+                    {
+
+                        if (method.Body.Instructions[i].OpCode == OpCodes.Ldfld &&
+
+                           method.Body.Instructions[i - 1].OpCode == OpCodes.Ldsfld)
+
+                            method.Body.Instructions[i - 1].OpCode = OpCodes.Nop;
+
+
+
+                        method.Body.Instructions[i].OpCode = OpCodes.Ldc_R4;
+
+                        method.Body.Instructions[i].Operand = (float)fvalue;
+
+                        count++;
+
+                    }
+
+
+
+                    if (double_fields.TryGetValue((IField)method.Body.Instructions[i].Operand, out var dvalue) &&
+
+                    method.DeclaringType != double_fields.First().Key.DeclaringType)
+                    {
+
+                        if (method.Body.Instructions[i].OpCode == OpCodes.Ldfld &&
+
+                           method.Body.Instructions[i - 1].OpCode == OpCodes.Ldsfld)
+
+                            method.Body.Instructions[i - 1].OpCode = OpCodes.Nop;
+
+
+
+                        method.Body.Instructions[i].OpCode = OpCodes.Ldc_R8;
+
+                        method.Body.Instructions[i].Operand = (double)dvalue;
+
+                        count++;
+
+                    }
+
                 }
                 catch { }
 
@@ -206,6 +1180,25 @@ namespace NETReactorSlayer.Core.Stages
 
 
         private IContext Context { get; set; }
-        private readonly Dictionary<IField, int> _fields = new();
+        private readonly Dictionary<IField, int> int_fields = new();
+
+        private readonly Dictionary<IField, float> float_fields = new();
+        private readonly Dictionary<IField, double> double_fields = new();
+
+        private readonly Dictionary<IField, byte> byte_fields = new();
+
+        private readonly Dictionary<IField, sbyte> sbyte_fields = new();
+
+        private readonly Dictionary<IField, string> string_fields = new();
+
+        private readonly Dictionary<IField, char> char_fields = new();
+
+        private readonly Dictionary<IField, short> short_fields = new();
+        private readonly Dictionary<IField, ushort> ushort_fields = new();
+        private readonly Dictionary<IField, uint> uint_fields = new();
+        private readonly Dictionary<IField, long> long_fields = new();
+        private readonly Dictionary<IField, ulong> ulong_fields = new();
+        private readonly Dictionary<IField, bool> bool_fields = new();
+
     }
 }

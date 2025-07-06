@@ -13,9 +13,9 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+using dnlib.DotNet;
 using System;
 using System.Collections.Generic;
-using dnlib.DotNet;
 
 namespace NETReactorSlayer.De4dot.Renamer
 {
@@ -29,12 +29,12 @@ namespace NETReactorSlayer.De4dot.Renamer
                 case null:
                     return UnknownNameCreator.Create();
                 case GenericInstSig gis:
-                {
-                    if (gis.FullName == "System.Nullable`1" &&
-                        gis.GenericArguments.Count == 1 && gis.GenericArguments[0] != null)
-                        typeRef = gis.GenericArguments[0];
-                    break;
-                }
+                    {
+                        if (gis.FullName == "System.Nullable`1" &&
+                            gis.GenericArguments.Count == 1 && gis.GenericArguments[0] != null)
+                            typeRef = gis.GenericArguments[0];
+                        break;
+                    }
             }
 
             var prefix = GetPrefix(typeRef);

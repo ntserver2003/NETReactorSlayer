@@ -13,16 +13,16 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+using de4dot.blocks;
+using dnlib.DotNet;
+using dnlib.DotNet.Emit;
+using dnlib.DotNet.Resources;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using de4dot.blocks;
-using dnlib.DotNet;
-using dnlib.DotNet.Emit;
-using dnlib.DotNet.Resources;
 
 namespace NETReactorSlayer.De4dot.Renamer
 {
@@ -136,8 +136,8 @@ namespace NETReactorSlayer.De4dot.Renamer
                 nameToInfo[info.Element.Name] = info;
 
             foreach (var instrs in from method in type.Methods
-                     where method.Body != null
-                     select method.Body.Instructions)
+                                   where method.Body != null
+                                   select method.Body.Instructions)
                 for (var i = 0; i < instrs.Count; i++)
                 {
                     var call = instrs[i];
@@ -223,7 +223,7 @@ namespace NETReactorSlayer.De4dot.Renamer
 
         private string CreateName(Func<int, string> create)
         {
-            for (var counter = 0;; counter++)
+            for (var counter = 0; ; counter++)
             {
                 var newName = create(counter);
                 if (_newNames.ContainsKey(newName))

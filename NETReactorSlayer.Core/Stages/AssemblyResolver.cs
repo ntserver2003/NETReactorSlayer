@@ -1,4 +1,4 @@
-﻿/*
+/*
     Copyright (C) 2021 CodeStrikers.org
     This file is part of NETReactorSlayer.
     NETReactorSlayer is free software: you can redistribute it and/or modify
@@ -13,14 +13,14 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using de4dot.blocks;
 using dnlib.DotNet;
 using NETReactorSlayer.Core.Abstractions;
 using NETReactorSlayer.Core.Helper;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
 namespace NETReactorSlayer.Core.Stages
 {
@@ -35,7 +35,7 @@ namespace NETReactorSlayer.Core.Stages
                 return;
 
             var assemblies = new List<EmbeddedResource>();
-            foreach (var prefix in DotNetUtils.GetCodeStrings(_resolverMethod).Distinct())
+            foreach (var prefix in DotNetUtils.GetCodeStrings(_resolverMethod))
                 assemblies.AddRange(GetAssemblies(prefix));
             if (assemblies.Count < 1)
                 return;
@@ -56,30 +56,30 @@ namespace NETReactorSlayer.Core.Stages
         private void FindRequirements()
         {
             foreach (var type in from x in Context.Module.GetTypes()
-                     where x.HasFields && !x.HasNestedTypes && !x.HasEvents && !x.HasProperties
-                     select x)
-            foreach (var method in from x in type.Methods.ToArray()
-                     where x.HasBody && x.Body.HasInstructions && x.IsStatic &&
-                           DotNetUtils.IsMethod(x, "System.Void", "()") && x.DeclaringType != null
-                     select x)
-            foreach (var instr in method.Body.Instructions)
-                try
-                {
-                    if (instr.Operand == null || !instr.Operand.ToString()!.Contains("add_AssemblyResolve"))
-                        continue;
-                    if (!CheckFields(method.DeclaringType.Fields))
-                        continue;
-                    if (!FindResolverMethod(type, out var methodDef))
-                        continue;
-                    var localTypes = new LocalTypes(methodDef);
-                    if (!localTypes.All(_locals1) && !localTypes.All(_locals2) && !localTypes.All(_locals3))
-                        continue;
-                    _resolverMethod = methodDef;
-                    _resolverType = type;
-                    _initialMethod = method;
-                    return;
-                }
-                catch { }
+                                 where x.HasFields && !x.HasNestedTypes && !x.HasEvents && !x.HasProperties
+                                 select x)
+                foreach (var method in from x in type.Methods.ToArray()
+                                       where x.HasBody && x.Body.HasInstructions && x.IsStatic &&
+                                             DotNetUtils.IsMethod(x, "System.Void", "()") && x.DeclaringType != null
+                                       select x)
+                    foreach (var instr in method.Body.Instructions)
+                        try
+                        {
+                            if (instr.Operand == null || !instr.Operand.ToString()!.Contains("add_AssemblyResolve"))
+                                continue;
+                            if (!CheckFields(method.DeclaringType.Fields))
+                                continue;
+                            if (!FindResolverMethod(type, out var methodDef))
+                                continue;
+                            var localTypes = new LocalTypes(methodDef);
+                            if (!localTypes.All(_locals1) && !localTypes.All(_locals2) && !localTypes.All(_locals3))
+                                continue;
+                            _resolverMethod = methodDef;
+                            _resolverType = type;
+                            _initialMethod = method;
+                            return;
+                        }
+                        catch { }
         }
 
         private static bool FindResolverMethod(TypeDef type, out MethodDef method)
@@ -115,7 +115,7 @@ namespace NETReactorSlayer.Core.Stages
         {
             var result = new List<EmbeddedResource>();
             if (string.IsNullOrEmpty(prefix))
-                return result;
+                return null;
             foreach (var rsrc in Context.Module.Resources)
             {
                 if (rsrc is not EmbeddedResource resource)

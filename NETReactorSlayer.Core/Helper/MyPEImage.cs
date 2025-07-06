@@ -1,4 +1,4 @@
-﻿/*
+/*
     Copyright (C) 2021 CodeStrikers.org
     This file is part of NETReactorSlayer.
     NETReactorSlayer is free software: you can redistribute it and/or modify
@@ -13,12 +13,12 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-using System;
-using System.Linq;
 using de4dot.blocks;
 using dnlib.DotNet.MD;
 using dnlib.IO;
 using dnlib.PE;
+using System;
+using System.Linq;
 
 namespace NETReactorSlayer.Core.Helper
 {

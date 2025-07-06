@@ -13,10 +13,10 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+using dnlib.DotNet;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using dnlib.DotNet;
 
 namespace NETReactorSlayer.De4dot.Renamer.AsmModules
 {
@@ -81,12 +81,12 @@ namespace NETReactorSlayer.De4dot.Renamer.AsmModules
             }
 
             foreach (var typeDef in _allTypes)
-            foreach (var iface in typeDef.TypeDef.Interfaces)
-            {
-                var ifaceTypeDef = ResolveType(iface.Interface) ?? ResolveOther(iface.Interface);
-                if (ifaceTypeDef != null)
-                    typeDef.AddInterface(ifaceTypeDef, iface.Interface);
-            }
+                foreach (var iface in typeDef.TypeDef.Interfaces)
+                {
+                    var ifaceTypeDef = ResolveType(iface.Interface) ?? ResolveOther(iface.Interface);
+                    if (ifaceTypeDef != null)
+                        typeDef.AddInterface(ifaceTypeDef, iface.Interface);
+                }
 
             var allTypesDict = new Dictionary<MTypeDef, bool>();
             foreach (var t in _allTypes)
@@ -182,24 +182,24 @@ namespace NETReactorSlayer.De4dot.Renamer.AsmModules
                 case ScopeType.AssemblyRef:
                     return FindModules((AssemblyRef)scope);
                 case ScopeType.ModuleDef:
-                {
-                    var findModules = FindModules((ModuleDef)scope);
-                    if (findModules != null)
-                        return findModules;
-                    break;
-                }
-                case ScopeType.ModuleRef:
-                {
-                    var moduleRef = (ModuleRef)scope;
-                    if (moduleRef.Name == type.Module.Name)
                     {
-                        var findModules = FindModules(type.Module);
+                        var findModules = FindModules((ModuleDef)scope);
                         if (findModules != null)
                             return findModules;
+                        break;
                     }
+                case ScopeType.ModuleRef:
+                    {
+                        var moduleRef = (ModuleRef)scope;
+                        if (moduleRef.Name == type.Module.Name)
+                        {
+                            var findModules = FindModules(type.Module);
+                            if (findModules != null)
+                                return findModules;
+                        }
 
-                    break;
-                }
+                        break;
+                    }
             }
 
             if (scopeType is not (ScopeType.ModuleRef or ScopeType.ModuleDef))

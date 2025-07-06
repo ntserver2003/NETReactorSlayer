@@ -1,4 +1,4 @@
-﻿/*
+/*
     Copyright (C) 2021 CodeStrikers.org
     This file is part of NETReactorSlayer.
     NETReactorSlayer is free software: you can redistribute it and/or modify
@@ -15,7 +15,7 @@
 
 using System;
 
-namespace NETReactorSlayerr_x64.CLI
+namespace NETReactorSlayer_x64.CLI
 {
     internal class Program
     {

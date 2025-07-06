@@ -1,4 +1,4 @@
-﻿/*
+/*
     Copyright (C) 2021 CodeStrikers.org
     This file is part of NETReactorSlayer.
     NETReactorSlayer is free software: you can redistribute it and/or modify
@@ -13,12 +13,12 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-using System.Linq;
 using de4dot.blocks;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 using NETReactorSlayer.Core.Abstractions;
 using NETReactorSlayer.Core.Helper;
+using System.Linq;
 
 namespace NETReactorSlayer.Core.Stages
 {
@@ -69,22 +69,22 @@ namespace NETReactorSlayer.Core.Stages
 
         private MethodDef Find() =>
             (from type in Context.Module.GetTypes()
-                from method in type.Methods
-                where method.IsStatic && method.Body != null
-                let sig = method.MethodSig
-                where sig != null && sig.Params.Count == 2
-                where sig.RetType.ElementType is ElementType.Object or ElementType.String
-                where sig.Params[0]?.ElementType is ElementType.Object or ElementType.String
-                where sig.Params[1]?.ElementType is ElementType.Object or ElementType.String
-                select method).FirstOrDefault(method => new LocalTypes(method).All(new[]
-            {
+             from method in type.Methods
+             where method.IsStatic && method.Body != null
+             let sig = method.MethodSig
+             where sig != null && sig.Params.Count == 2
+             where sig.RetType.ElementType is ElementType.Object or ElementType.String
+             where sig.Params[0]?.ElementType is ElementType.Object or ElementType.String
+             where sig.Params[1]?.ElementType is ElementType.Object or ElementType.String
+             select method).FirstOrDefault(method => new LocalTypes(method).All(new[]
+         {
                 "System.Byte[]",
                 "System.IO.MemoryStream",
                 "System.Security.Cryptography.CryptoStream",
                 "System.Security.Cryptography.MD5",
                 "System.Security.Cryptography.Rijndael"
             }) || new LocalTypes(method).All(new[]
-            {
+         {
                 "System.Byte[]",
                 "System.IO.MemoryStream",
                 "System.Security.Cryptography.SymmetricAlgorithm",
@@ -93,55 +93,55 @@ namespace NETReactorSlayer.Core.Stages
 
         private static Block GetBlock(Blocks blocks, IMethod methodDef) =>
             (from block in blocks.MethodBlocks.GetAllBlocks()
-                where block.LastInstr.IsBrfalse()
-                let instructions = block.Instructions
-                where instructions.Count >= 11
-                let i = instructions.Count - 11
-                where instructions[i].OpCode.Code == Code.Ldtoken
-                where instructions[i].Operand is ITypeDefOrRef
-                where instructions[i + 1].OpCode.Code == Code.Call ||
-                      (instructions[i + 1].OpCode.Code == Code.Callvirt &&
-                       instructions[i + 1].Operand is IMethod
-                       {
-                           FullName: "System.Type System.Type::GetTypeFromHandle(System.RuntimeTypeHandle)"
-                       })
-                where instructions[i + 2].OpCode.Code == Code.Call ||
-                      (instructions[i + 2].OpCode.Code == Code.Callvirt &&
-                       instructions[i + 2].Operand is IMethod
-                       {
-                           FullName: "System.Reflection.Assembly System.Type::get_Assembly()"
-                       })
-                where instructions[i + 3].OpCode.Code == Code.Call ||
-                      (instructions[i + 3].OpCode.Code == Code.Callvirt &&
-                       instructions[i + 3].Operand is IMethod
-                       {
-                           FullName: "System.Reflection.AssemblyName System.Reflection.Assembly::GetName()"
-                       })
-                where instructions[i + 4].OpCode.Code == Code.Call ||
-                      (instructions[i + 4].OpCode.Code == Code.Callvirt &&
-                       instructions[i + 4].Operand is IMethod
-                       {
-                           FullName: "System.Byte[] System.Reflection.AssemblyName::GetPublicKeyToken()"
-                       })
-                where instructions[i + 5].OpCode.Code == Code.Call ||
-                      (instructions[i + 5].OpCode.Code == Code.Callvirt &&
-                       instructions[i + 5].Operand is IMethod
-                       {
-                           FullName: "System.String System.Convert::ToBase64String(System.Byte[])"
-                       })
-                where instructions[i + 6].OpCode.Code == Code.Ldstr
-                where instructions[i + 7].OpCode.Code == Code.Call ||
-                      (instructions[i + 7].OpCode.Code == Code.Callvirt &&
-                       instructions[i + 7].Operand is IMethod calledMethod &&
-                       MethodEqualityComparer.CompareDeclaringTypes.Equals(calledMethod, methodDef))
-                where instructions[i + 8].OpCode.Code == Code.Ldstr
-                where instructions[i + 9].OpCode.Code == Code.Call ||
-                      (instructions[i + 9].OpCode.Code == Code.Callvirt &&
-                       instructions[i + 9].Operand is IMethod
-                       {
-                           FullName: "System.Boolean System.String::op_Inequality(System.String,System.String)"
-                       })
-                select block).FirstOrDefault();
+             where block.LastInstr.IsBrfalse()
+             let instructions = block.Instructions
+             where instructions.Count >= 11
+             let i = instructions.Count - 11
+             where instructions[i].OpCode.Code == Code.Ldtoken
+             where instructions[i].Operand is ITypeDefOrRef
+             where instructions[i + 1].OpCode.Code == Code.Call ||
+                   (instructions[i + 1].OpCode.Code == Code.Callvirt &&
+                    instructions[i + 1].Operand is IMethod
+                    {
+                        FullName: "System.Type System.Type::GetTypeFromHandle(System.RuntimeTypeHandle)"
+                    })
+             where instructions[i + 2].OpCode.Code == Code.Call ||
+                   (instructions[i + 2].OpCode.Code == Code.Callvirt &&
+                    instructions[i + 2].Operand is IMethod
+                    {
+                        FullName: "System.Reflection.Assembly System.Type::get_Assembly()"
+                    })
+             where instructions[i + 3].OpCode.Code == Code.Call ||
+                   (instructions[i + 3].OpCode.Code == Code.Callvirt &&
+                    instructions[i + 3].Operand is IMethod
+                    {
+                        FullName: "System.Reflection.AssemblyName System.Reflection.Assembly::GetName()"
+                    })
+             where instructions[i + 4].OpCode.Code == Code.Call ||
+                   (instructions[i + 4].OpCode.Code == Code.Callvirt &&
+                    instructions[i + 4].Operand is IMethod
+                    {
+                        FullName: "System.Byte[] System.Reflection.AssemblyName::GetPublicKeyToken()"
+                    })
+             where instructions[i + 5].OpCode.Code == Code.Call ||
+                   (instructions[i + 5].OpCode.Code == Code.Callvirt &&
+                    instructions[i + 5].Operand is IMethod
+                    {
+                        FullName: "System.String System.Convert::ToBase64String(System.Byte[])"
+                    })
+             where instructions[i + 6].OpCode.Code == Code.Ldstr
+             where instructions[i + 7].OpCode.Code == Code.Call ||
+                   (instructions[i + 7].OpCode.Code == Code.Callvirt &&
+                    instructions[i + 7].Operand is IMethod calledMethod &&
+                    MethodEqualityComparer.CompareDeclaringTypes.Equals(calledMethod, methodDef))
+             where instructions[i + 8].OpCode.Code == Code.Ldstr
+             where instructions[i + 9].OpCode.Code == Code.Call ||
+                   (instructions[i + 9].OpCode.Code == Code.Callvirt &&
+                    instructions[i + 9].Operand is IMethod
+                    {
+                        FullName: "System.Boolean System.String::op_Inequality(System.String,System.String)"
+                    })
+             select block).FirstOrDefault();
 
 
         private IContext Context { get; set; }
