@@ -7,7 +7,7 @@
 		<OutputPath>..\bin\$(Configuration)\</OutputPath>
 		<OutputType>Library</OutputType>
 		<PlatformTarget>AnyCPU</PlatformTarget>
-		<TargetFrameworks>net48;net7.0;net9.0</TargetFrameworks>
+		<TargetFrameworks>net48;net6.0;net7.0;net9.0;netcoreapp3.1</TargetFrameworks>
 
 	</PropertyGroup>
 
