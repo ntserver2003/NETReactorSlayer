@@ -13,11 +13,11 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-using System.Linq;
 using de4dot.blocks;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 using NETReactorSlayer.Core.Abstractions;
+using System.Linq;
 
 namespace NETReactorSlayer.Core.Stages
 {
@@ -31,8 +31,8 @@ namespace NETReactorSlayer.Core.Stages
             long count = 0;
             foreach (var type in from type in context.Module.GetTypes()
                          .Where(x => !x.HasProperties && !x.HasEvents && x.Fields.Count != 0)
-                     from _ in type.Fields.Where(x => x.FieldType.FullName.Equals("System.ModuleHandle"))
-                     select type)
+                                 from _ in type.Fields.Where(x => x.FieldType.FullName.Equals("System.ModuleHandle"))
+                                 select type)
             {
                 foreach (var method in type.Methods.Where(x => x.MethodSig != null &&
                                                                x.MethodSig.Params.Count.Equals(1) &&
@@ -48,39 +48,39 @@ namespace NETReactorSlayer.Core.Stages
                 goto Continue;
             }
 
-            Continue:
+        Continue:
             if (typeDef != null)
                 foreach (var type in context.Module.GetTypes())
-                foreach (var method in type.Methods.Where(x => x.HasBody && x.Body.HasInstructions))
-                {
-                    var gpContext = GenericParamContext.Create(method);
-                    var blocks = new Blocks(method);
-                    foreach (var block in blocks.MethodBlocks.GetAllBlocks())
-                        for (var i = 0; i < block.Instructions.Count; i++)
-                            try
-                            {
-                                if (!block.Instructions[i].OpCode.Code.Equals(Code.Ldc_I4) ||
-                                    block.Instructions[i + 1].OpCode.Code != Code.Call)
-                                    continue;
-                                if (block.Instructions[i + 1].Operand is not IMethod iMethod ||
-                                    !default(SigComparer).Equals(typeDef, iMethod.DeclaringType))
-                                    continue;
-                                var methodDef = DotNetUtils.GetMethod(context.Module, iMethod);
-                                if (methodDef == null)
-                                    continue;
-                                if (methodDef != typeMethod && methodDef != fieldMethod)
-                                    continue;
-                                var token = (uint)(int)block.Instructions[i].Operand;
-                                block.Instructions[i] = new Instr(OpCodes.Nop.ToInstruction());
-                                block.Instructions[i + 1] = new Instr(new Instruction(OpCodes.Ldtoken,
-                                    context.Module.ResolveToken(token, gpContext) as ITokenOperand));
-                                count++;
-                            }
-                            catch { }
+                    foreach (var method in type.Methods.Where(x => x.HasBody && x.Body.HasInstructions))
+                    {
+                        var gpContext = GenericParamContext.Create(method);
+                        var blocks = new Blocks(method);
+                        foreach (var block in blocks.MethodBlocks.GetAllBlocks())
+                            for (var i = 0; i < block.Instructions.Count; i++)
+                                try
+                                {
+                                    if (!block.Instructions[i].OpCode.Code.Equals(Code.Ldc_I4) ||
+                                        block.Instructions[i + 1].OpCode.Code != Code.Call)
+                                        continue;
+                                    if (block.Instructions[i + 1].Operand is not IMethod iMethod ||
+                                        !default(SigComparer).Equals(typeDef, iMethod.DeclaringType))
+                                        continue;
+                                    var methodDef = DotNetUtils.GetMethod(context.Module, iMethod);
+                                    if (methodDef == null)
+                                        continue;
+                                    if (methodDef != typeMethod && methodDef != fieldMethod)
+                                        continue;
+                                    var token = (uint)(int)block.Instructions[i].Operand;
+                                    block.Instructions[i] = new Instr(OpCodes.Nop.ToInstruction());
+                                    block.Instructions[i + 1] = new Instr(new Instruction(OpCodes.Ldtoken,
+                                        context.Module.ResolveToken(token, gpContext) as ITokenOperand));
+                                    count++;
+                                }
+                                catch { }
 
-                    blocks.GetCode(out var allInstructions, out var allExceptionHandlers);
-                    DotNetUtils.RestoreBody(method, allInstructions, allExceptionHandlers);
-                }
+                        blocks.GetCode(out var allInstructions, out var allExceptionHandlers);
+                        DotNetUtils.RestoreBody(method, allInstructions, allExceptionHandlers);
+                    }
 
 
             if (count == 0)

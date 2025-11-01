@@ -1,4 +1,4 @@
-﻿/*
+/*
     Copyright (C) 2021 CodeStrikers.org
     This file is part of NETReactorSlayer.
     NETReactorSlayer is free software: you can redistribute it and/or modify
@@ -13,15 +13,16 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-using System;
-using System.Diagnostics;
-using System.IO;
-using System.Reflection;
 using dnlib.DotNet;
 using dnlib.DotNet.Writer;
 using dnlib.PE;
 using NETReactorSlayer.Core.Abstractions;
 using NETReactorSlayer.Core.Helper;
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using ILogger = NETReactorSlayer.Core.Abstractions.ILogger;
 
 namespace NETReactorSlayer.Core
@@ -71,7 +72,7 @@ namespace NETReactorSlayer.Core
 
                     Process.Start(new ProcessStartInfo(Process.GetCurrentProcess().MainModule?.FileName,
                             $"--del-temp {Process.GetCurrentProcess().Id} \"{Options.SourcePath}\"")
-                        { WindowStyle = ProcessWindowStyle.Hidden });
+                    { WindowStyle = ProcessWindowStyle.Hidden });
 
                     Logger.Info("Native stub unpacked.");
                 }
@@ -124,6 +125,16 @@ namespace NETReactorSlayer.Core
                 Logger.Error($"An unexpected error occurred during writing output file. {ex.Message}.");
             }
         }
+
+
+
+        // https://www.cnblogs.com/Fred1987/p/18603592
+
+        //copy from,https://gist.github.com/6rube/34b561827f0805f73742541b8b8bb770
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+
+        static extern int MessageBox(IntPtr hWnd, String text, String caption, uint type);
 
         private bool LoadAssembly()
         {

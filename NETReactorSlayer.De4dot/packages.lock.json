@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "dependencies": {
+    ".NETCoreApp,Version=v3.1": {
+      "dnlib": {
+        "type": "Direct",
+        "requested": "[4.5.0, )",
+        "resolved": "4.5.0",
+        "contentHash": "YkwstIbjyiJ12uGIAN8oSmImgVFkPHit7MJXPHvJqeKV1DMNqxZWszjHfykgiSs4Y/XmjnZts7pI2/AYme5/uA==",
+        "dependencies": {
+          "System.Reflection.Emit": "4.7.0",
+          "System.Reflection.Emit.Lightweight": "4.7.0"
+        }
+      },
+      "System.Reflection.Emit": {
+        "type": "Transitive",
+        "resolved": "4.7.0",
+        "contentHash": "VR4kk8XLKebQ4MZuKuIni/7oh+QGFmZW3qORd1GvBq/8026OpW501SzT/oypwiQl4TvT8ErnReh/NzY9u+C6wQ=="
+      },
+      "System.Reflection.Emit.Lightweight": {
+        "type": "Transitive",
+        "resolved": "4.7.0",
+        "contentHash": "a4OLB4IITxAXJeV74MDx49Oq2+PsF6Sml54XAFv+2RyWwtDBcabzoxiiJRhdhx+gaohLh4hEGCLQyBozXoQPqA=="
+      }
+    },
+    ".NETFramework,Version=v4.8": {
+      "dnlib": {
+        "type": "Direct",
+        "requested": "[4.5.0, )",
+        "resolved": "4.5.0",
+        "contentHash": "YkwstIbjyiJ12uGIAN8oSmImgVFkPHit7MJXPHvJqeKV1DMNqxZWszjHfykgiSs4Y/XmjnZts7pI2/AYme5/uA=="
+      }
+    },
+    "net6.0": {
+      "dnlib": {
+        "type": "Direct",
+        "requested": "[4.5.0, )",
+        "resolved": "4.5.0",
+        "contentHash": "YkwstIbjyiJ12uGIAN8oSmImgVFkPHit7MJXPHvJqeKV1DMNqxZWszjHfykgiSs4Y/XmjnZts7pI2/AYme5/uA=="
+      }
+    },
+    "net7.0": {
+      "dnlib": {
+        "type": "Direct",
+        "requested": "[4.5.0, )",
+        "resolved": "4.5.0",
+        "contentHash": "YkwstIbjyiJ12uGIAN8oSmImgVFkPHit7MJXPHvJqeKV1DMNqxZWszjHfykgiSs4Y/XmjnZts7pI2/AYme5/uA=="
+      }
+    },
+    "net9.0": {
+      "dnlib": {
+        "type": "Direct",
+        "requested": "[4.5.0, )",
+        "resolved": "4.5.0",
+        "contentHash": "YkwstIbjyiJ12uGIAN8oSmImgVFkPHit7MJXPHvJqeKV1DMNqxZWszjHfykgiSs4Y/XmjnZts7pI2/AYme5/uA=="
+      }
+    }
+  }
+}

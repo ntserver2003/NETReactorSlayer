@@ -1,4 +1,4 @@
-﻿/*
+/*
     Copyright (C) 2021 CodeStrikers.org
     This file is part of NETReactorSlayer.
     NETReactorSlayer is free software: you can redistribute it and/or modify
@@ -13,12 +13,12 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using dnlib.DotNet;
 using dnlib.PE;
 using ICSharpCode.SharpZipLib.Zip.Compression;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace NETReactorSlayer.Core.Helper
 {
@@ -78,9 +78,9 @@ namespace NETReactorSlayer.Core.Helper
         {
             _isNet1X = false;
             foreach (var item in from item in _baseOffsets
-                     let code = _peImage.OffsetReadBytes(item, _decryptMethodPattern.Length)
-                     where DeobUtils.IsCode(_decryptMethodPattern, code)
-                     select item)
+                                 let code = _peImage.OffsetReadBytes(item, _decryptMethodPattern.Length)
+                                 where DeobUtils.IsCode(_decryptMethodPattern, code)
+                                 select item)
                 return GetKeyData(item);
 
             var net1XCode = _peImage.OffsetReadBytes(0x207E0, _startMethodNet1XPattern.Length);
@@ -121,8 +121,8 @@ namespace NETReactorSlayer.Core.Helper
 
             var transformTemp = new ushort[256, 256];
             for (var i = 0; i < 256; i++)
-            for (var j = 0; j < 256; j++)
-                transformTemp[i, j] = 0x400;
+                for (var j = 0; j < 256; j++)
+                    transformTemp[i, j] = 0x400;
             var counter = 0x0B;
             byte newByte = 0;
             var ki = 0;
@@ -166,8 +166,8 @@ namespace NETReactorSlayer.Core.Helper
             }
 
             for (var i = 0; i < 256; i++)
-            for (var j = 0; j < 256; j++)
-                transform[(byte)transformTemp[i, j], j] = (byte)i;
+                for (var j = 0; j < 256; j++)
+                    transform[(byte)transformTemp[i, j], j] = (byte)i;
 
             for (var i = 0; i < count; i += 1024, offset += 1024)
             {

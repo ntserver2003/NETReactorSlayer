@@ -13,8 +13,8 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-using System.Text.RegularExpressions;
 using dnlib.DotNet;
+using System.Text.RegularExpressions;
 
 namespace NETReactorSlayer.De4dot
 {

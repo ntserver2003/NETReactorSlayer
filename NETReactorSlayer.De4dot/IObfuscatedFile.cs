@@ -13,9 +13,9 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-using System;
 using dnlib.DotNet;
 using NETReactorSlayer.De4dot.Renamer;
+using System;
 
 namespace NETReactorSlayer.De4dot
 {

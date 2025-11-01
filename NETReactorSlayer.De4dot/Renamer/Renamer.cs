@@ -13,13 +13,13 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+using de4dot.blocks;
+using dnlib.DotNet;
+using NETReactorSlayer.De4dot.Renamer.AsmModules;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using de4dot.blocks;
-using dnlib.DotNet;
-using NETReactorSlayer.De4dot.Renamer.AsmModules;
 
 namespace NETReactorSlayer.De4dot.Renamer
 {
@@ -63,22 +63,22 @@ namespace NETReactorSlayer.De4dot.Renamer
         private static void RemoveUselessOverrides(MethodNameGroups groups)
         {
             foreach (var group in groups.GetAllGroups())
-            foreach (var method in group.Methods)
-            {
-                if (!method.Owner.HasModule)
-                    continue;
-                if (!method.IsPublic())
-                    continue;
-                var overrides = method.MethodDef.Overrides;
-                for (var i = 0; i < overrides.Count; i++)
+                foreach (var method in group.Methods)
                 {
-                    var overrideMethod = overrides[i].MethodDeclaration;
-                    if (method.MethodDef.Name != overrideMethod.Name)
+                    if (!method.Owner.HasModule)
                         continue;
-                    overrides.RemoveAt(i);
-                    i--;
+                    if (!method.IsPublic())
+                        continue;
+                    var overrides = method.MethodDef.Overrides;
+                    for (var i = 0; i < overrides.Count; i++)
+                    {
+                        var overrideMethod = overrides[i].MethodDeclaration;
+                        if (method.MethodDef.Name != overrideMethod.Name)
+                            continue;
+                        overrides.RemoveAt(i);
+                        i--;
+                    }
                 }
-            }
         }
 
         private void RenameTypeDefs()
@@ -339,9 +339,9 @@ namespace NETReactorSlayer.De4dot.Renamer
             foreach (var group in allGroups)
             {
                 var prop = (from method in @group.Methods
-                    where method.Property != null
-                    where !method.Owner.HasModule
-                    select method.Property).FirstOrDefault();
+                            where method.Property != null
+                            where !method.Owner.HasModule
+                            select method.Property).FirstOrDefault();
 
                 if (prop == null)
                     continue;
@@ -358,9 +358,9 @@ namespace NETReactorSlayer.De4dot.Renamer
             foreach (var group in allGroups)
             {
                 var evt = (from method in @group.Methods
-                    where method.Event != null
-                    where !method.Owner.HasModule
-                    select method.Event).FirstOrDefault();
+                           where method.Event != null
+                           where !method.Owner.HasModule
+                           select method.Event).FirstOrDefault();
 
                 if (evt == null)
                     continue;
@@ -465,18 +465,18 @@ namespace NETReactorSlayer.De4dot.Renamer
             }
 
             foreach (var type in _modules.AllTypes)
-            foreach (var method in type.AllMethodsSorted)
-            {
-                if (method.IsVirtual())
-                    continue;
-                if (method.Property != null)
-                    continue;
-                var methodName = method.MethodDef.Name.String;
-                if (Utils.StartsWith(methodName, "get_", StringComparison.Ordinal))
-                    CreatePropertyGetter(methodName.Substring(4), method);
-                else if (Utils.StartsWith(methodName, "set_", StringComparison.Ordinal))
-                    CreatePropertySetter(methodName.Substring(4), method);
-            }
+                foreach (var method in type.AllMethodsSorted)
+                {
+                    if (method.IsVirtual())
+                        continue;
+                    if (method.Property != null)
+                        continue;
+                    var methodName = method.MethodDef.Name.String;
+                    if (Utils.StartsWith(methodName, "get_", StringComparison.Ordinal))
+                        CreatePropertyGetter(methodName.Substring(4), method);
+                    else if (Utils.StartsWith(methodName, "set_", StringComparison.Ordinal))
+                        CreatePropertySetter(methodName.Substring(4), method);
+                }
         }
 
         private void CreatePropertyGetter(string name, MMethodDef propMethod)
@@ -681,18 +681,18 @@ namespace NETReactorSlayer.De4dot.Renamer
             }
 
             foreach (var type in _modules.AllTypes)
-            foreach (var method in type.AllMethodsSorted)
-            {
-                if (method.IsVirtual())
-                    continue;
-                if (method.Event != null)
-                    continue;
-                var methodName = method.MethodDef.Name.String;
-                if (Utils.StartsWith(methodName, "add_", StringComparison.Ordinal))
-                    CreateEventAdder(methodName.Substring(4), method);
-                else if (Utils.StartsWith(methodName, "remove_", StringComparison.Ordinal))
-                    CreateEventRemover(methodName.Substring(7), method);
-            }
+                foreach (var method in type.AllMethodsSorted)
+                {
+                    if (method.IsVirtual())
+                        continue;
+                    if (method.Event != null)
+                        continue;
+                    var methodName = method.MethodDef.Name.String;
+                    if (Utils.StartsWith(methodName, "add_", StringComparison.Ordinal))
+                        CreateEventAdder(methodName.Substring(4), method);
+                    else if (Utils.StartsWith(methodName, "remove_", StringComparison.Ordinal))
+                        CreateEventRemover(methodName.Substring(7), method);
+                }
         }
 
         private void CreateEventAdder(string name, MMethodDef eventMethod)
@@ -836,25 +836,25 @@ namespace NETReactorSlayer.De4dot.Renamer
         {
             var methods = new List<MMethodDef>(group.Methods);
             foreach (var method in group.Methods)
-            foreach (var ovrd in method.MethodDef.Overrides)
-            {
-                var overrideRef = ovrd.MethodDeclaration;
-                var overrideDef = _modules.ResolveMethod(overrideRef);
-                if (overrideDef == null)
+                foreach (var ovrd in method.MethodDef.Overrides)
                 {
-                    var typeDef = _modules.ResolveType(overrideRef.DeclaringType) ??
-                                  _modules.ResolveOther(overrideRef.DeclaringType);
-                    if (typeDef == null)
-                        continue;
-                    overrideDef = typeDef.FindMethod(overrideRef);
+                    var overrideRef = ovrd.MethodDeclaration;
+                    var overrideDef = _modules.ResolveMethod(overrideRef);
                     if (overrideDef == null)
-                        continue;
-                }
+                    {
+                        var typeDef = _modules.ResolveType(overrideRef.DeclaringType) ??
+                                      _modules.ResolveOther(overrideRef.DeclaringType);
+                        if (typeDef == null)
+                            continue;
+                        overrideDef = typeDef.FindMethod(overrideRef);
+                        if (overrideDef == null)
+                            continue;
+                    }
 
-                if (overrideDef.VisibleParameterCount != method.VisibleParameterCount)
-                    continue;
-                methods.Add(overrideDef);
-            }
+                    if (overrideDef.VisibleParameterCount != method.VisibleParameterCount)
+                        continue;
+                    methods.Add(overrideDef);
+                }
 
             var argNames = new string[group.Methods[0].ParamDefs.Count];
             foreach (var method in methods)
@@ -1112,11 +1112,11 @@ namespace NETReactorSlayer.De4dot.Renamer
             group.Methods.FirstOrDefault(method => method.Property != null);
 
         private string GetSuggestedPropertyName(MethodNameGroup group) => (from method in @group.Methods
-            where method.Property != null
-            select _memberInfos.Property(method.Property)
+                                                                           where method.Property != null
+                                                                           select _memberInfos.Property(method.Property)
             into info
-            where info.SuggestedName != null
-            select info.SuggestedName).FirstOrDefault();
+                                                                           where info.SuggestedName != null
+                                                                           select info.SuggestedName).FirstOrDefault();
 
         internal static ITypeDefOrRef GetScopeType(TypeSig typeSig)
         {
@@ -1265,21 +1265,21 @@ namespace NETReactorSlayer.De4dot.Renamer
             _modules.ResolveMethod(overrideMethod.MethodDef.Overrides[0].MethodDeclaration);
 
         private string GetSuggestedMethodName(MethodNameGroup group) => (from method in @group.Methods
-            select _memberInfos.Method(method)
+                                                                         select _memberInfos.Method(method)
             into info
-            where info.SuggestedName != null
-            select info.SuggestedName).FirstOrDefault();
+                                                                         where info.SuggestedName != null
+                                                                         select info.SuggestedName).FirstOrDefault();
 
         private bool HasInvalidMethodName(MethodNameGroup group) => (from method in @group.Methods
-            let typeInfo = _memberInfos.Type(method.Owner)
-            let methodInfo = _memberInfos.Method(method)
-            where !typeInfo.NameChecker.IsValidMethodName(methodInfo.OldName)
-            select typeInfo).Any();
+                                                                     let typeInfo = _memberInfos.Type(method.Owner)
+                                                                     let methodInfo = _memberInfos.Method(method)
+                                                                     where !typeInfo.NameChecker.IsValidMethodName(methodInfo.OldName)
+                                                                     select typeInfo).Any();
 
         private static string GetAvailableName(string prefix, bool tryWithoutZero, MethodNameGroup group,
             Func<MethodNameGroup, string, bool> checkAvailable)
         {
-            for (var i = 0;; i++)
+            for (var i = 0; ; i++)
             {
                 var newName = i == 0 && tryWithoutZero ? prefix : prefix + i;
                 if (checkAvailable(group, newName))
@@ -1302,14 +1302,14 @@ namespace NETReactorSlayer.De4dot.Renamer
         private void PrepareRenameEntryPoints()
         {
             foreach (var methodDef in from module in _modules.TheModules
-                     select module.ModuleDefMd.EntryPoint
+                                      select module.ModuleDefMd.EntryPoint
                      into entryPoint
-                     where entryPoint != null
-                     select _modules.ResolveMethod(entryPoint)
+                                      where entryPoint != null
+                                      select _modules.ResolveMethod(entryPoint)
                      into methodDef
-                     where methodDef != null
-                     where methodDef.IsStatic()
-                     select methodDef)
+                                      where methodDef != null
+                                      where methodDef.IsStatic()
+                                      select methodDef)
             {
                 _memberInfos.Method(methodDef).SuggestedName = "Main";
                 if (methodDef.ParamDefs.Count != 1)
@@ -1579,8 +1579,8 @@ namespace NETReactorSlayer.De4dot.Renamer
 
                 _methodToGroup = new Dictionary<MMethodDef, MethodNameGroup>();
                 foreach (var group in _groups)
-                foreach (var method in group.Methods)
-                    _methodToGroup[method] = group;
+                    foreach (var method in group.Methods)
+                        _methodToGroup[method] = group;
 
                 foreach (var type in _allTypes)
                     Visit(type);

@@ -13,8 +13,8 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-using System.Collections.Generic;
 using NETReactorSlayer.De4dot.Renamer.AsmModules;
+using System.Collections.Generic;
 
 namespace NETReactorSlayer.De4dot.Renamer
 {

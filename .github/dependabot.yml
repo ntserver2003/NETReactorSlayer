@@ -2,15 +2,18 @@
 
 version: 2
 updates:
-
-  # Maintain dependencies for GitHub Actions
+  
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "daily"
-
-  # Maintain dependencies for nuget
+      interval: "weekly"
+    open-pull-requests-limit: 3
+      
   - package-ecosystem: "nuget"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        versions: ["*-preview*", "*-beta*", "*-alpha*"]

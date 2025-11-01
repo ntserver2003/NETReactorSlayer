@@ -1,4 +1,4 @@
-﻿/*
+/*
     Copyright (C) 2021 CodeStrikers.org
     This file is part of NETReactorSlayer.
     NETReactorSlayer is free software: you can redistribute it and/or modify
@@ -13,12 +13,12 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-using System.Collections.Generic;
-using System.Linq;
 using de4dot.blocks;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 using NETReactorSlayer.Core.Abstractions;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace NETReactorSlayer.Core.Helper
 {
@@ -40,9 +40,9 @@ namespace NETReactorSlayer.Core.Helper
         {
             _methodRefInfos = new MethodDefAndDeclaringTypeDict<MethodDefAndDeclaringTypeDict<bool>>();
             foreach (var type in context.Module.GetTypes())
-            foreach (var method in type.Methods.Where(x => x.HasBody && x.Body.HasInstructions))
-            foreach (var methodToRem in methods)
-                Add(method, methodToRem);
+                foreach (var method in type.Methods.Where(x => x.HasBody && x.Body.HasInstructions))
+                    foreach (var methodToRem in methods)
+                        Add(method, methodToRem);
 
             return context.Module.GetTypes().Sum(type =>
                 type.Methods.Where(x => x.HasBody && x.Body.HasInstructions)

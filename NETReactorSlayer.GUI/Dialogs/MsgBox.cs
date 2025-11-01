@@ -1,4 +1,4 @@
-﻿/*
+/*
     Copyright (C) 2021 CodeStrikers.org
     This file is part of NETReactorSlayer.
     NETReactorSlayer is free software: you can redistribute it and/or modify
@@ -13,6 +13,7 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+using NETReactorSlayer.GUI.Properties;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -21,7 +22,6 @@ using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using NETReactorSlayer.GUI.Properties;
 
 namespace NETReactorSlayer.GUI.Dialogs
 {

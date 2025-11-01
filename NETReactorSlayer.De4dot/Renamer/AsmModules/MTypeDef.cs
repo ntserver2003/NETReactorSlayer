@@ -13,11 +13,11 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+using de4dot.blocks;
+using dnlib.DotNet;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using de4dot.blocks;
-using dnlib.DotNet;
 
 namespace NETReactorSlayer.De4dot.Renamer.AsmModules
 {
@@ -104,32 +104,32 @@ namespace NETReactorSlayer.De4dot.Renamer.AsmModules
                 Add(new MPropertyDef(type.Properties[i], this, i));
 
             foreach (var propDef in _properties.GetValues())
-            foreach (var method in propDef.MethodDefs())
-            {
-                var methodDef = FindMethod(method);
-                if (methodDef == null)
-                    throw new ApplicationException("Could not find property method");
-                methodDef.Property = propDef;
-                if (method == propDef.PropertyDef.GetMethod)
-                    propDef.GetMethod = methodDef;
-                if (method == propDef.PropertyDef.SetMethod)
-                    propDef.SetMethod = methodDef;
-            }
+                foreach (var method in propDef.MethodDefs())
+                {
+                    var methodDef = FindMethod(method);
+                    if (methodDef == null)
+                        throw new ApplicationException("Could not find property method");
+                    methodDef.Property = propDef;
+                    if (method == propDef.PropertyDef.GetMethod)
+                        propDef.GetMethod = methodDef;
+                    if (method == propDef.PropertyDef.SetMethod)
+                        propDef.SetMethod = methodDef;
+                }
 
             foreach (var eventDef in _events.GetValues())
-            foreach (var method in eventDef.MethodDefs())
-            {
-                var methodDef = FindMethod(method);
-                if (methodDef == null)
-                    throw new ApplicationException("Could not find event method");
-                methodDef.Event = eventDef;
-                if (method == eventDef.EventDef.AddMethod)
-                    eventDef.AddMethod = methodDef;
-                if (method == eventDef.EventDef.RemoveMethod)
-                    eventDef.RemoveMethod = methodDef;
-                if (method == eventDef.EventDef.InvokeMethod)
-                    eventDef.RaiseMethod = methodDef;
-            }
+                foreach (var method in eventDef.MethodDefs())
+                {
+                    var methodDef = FindMethod(method);
+                    if (methodDef == null)
+                        throw new ApplicationException("Could not find event method");
+                    methodDef.Event = eventDef;
+                    if (method == eventDef.EventDef.AddMethod)
+                        eventDef.AddMethod = methodDef;
+                    if (method == eventDef.EventDef.RemoveMethod)
+                        eventDef.RemoveMethod = methodDef;
+                    if (method == eventDef.EventDef.InvokeMethod)
+                        eventDef.RaiseMethod = methodDef;
+                }
         }
 
         public void OnTypesRenamed()
@@ -219,20 +219,20 @@ namespace NETReactorSlayer.De4dot.Renamer.AsmModules
                     methodsDict[method.MethodDef] = method;
 
                 foreach (var ifaceInfo in Interfaces)
-                foreach (var methodsList in ifaceInfo.TypeDef._virtualMethodInstances.GetMethods())
-                {
-                    if (methodsList.Count < 1)
-                        continue;
-                    var methodInst = methodsList[0];
-                    var ifaceMethod = methodInst.OrigMethodDef;
-                    if (!ifaceMethod.IsVirtual())
-                        continue;
-                    var ifaceMethodRef =
-                        GenericArgsSubstitutor.Create(methodInst.MethodRef, ifaceInfo.TypeRef.TryGetGenericInstSig());
-                    if (!methodsDict.TryGetValue(ifaceMethodRef, out var classMethod))
-                        continue;
-                    _interfaceMethodInfos.AddMethod(ifaceInfo, ifaceMethod, classMethod);
-                }
+                    foreach (var methodsList in ifaceInfo.TypeDef._virtualMethodInstances.GetMethods())
+                    {
+                        if (methodsList.Count < 1)
+                            continue;
+                        var methodInst = methodsList[0];
+                        var ifaceMethod = methodInst.OrigMethodDef;
+                        if (!ifaceMethod.IsVirtual())
+                            continue;
+                        var ifaceMethodRef =
+                            GenericArgsSubstitutor.Create(methodInst.MethodRef, ifaceInfo.TypeRef.TryGetGenericInstSig());
+                        if (!methodsDict.TryGetValue(ifaceMethodRef, out var classMethod))
+                            continue;
+                        _interfaceMethodInfos.AddMethod(ifaceInfo, ifaceMethod, classMethod);
+                    }
             }
 
             methodsDict.Clear();
@@ -247,19 +247,19 @@ namespace NETReactorSlayer.De4dot.Renamer.AsmModules
                 }
 
             foreach (var ifaceInfo in _allImplementedInterfaces.Keys)
-            foreach (var methodsList in ifaceInfo.TypeDef._virtualMethodInstances.GetMethods())
-            {
-                if (methodsList.Count < 1)
-                    continue;
-                var ifaceMethod = methodsList[0].OrigMethodDef;
-                if (!ifaceMethod.IsVirtual())
-                    continue;
-                var ifaceMethodRef =
-                    GenericArgsSubstitutor.Create(ifaceMethod.MethodDef, ifaceInfo.TypeRef.TryGetGenericInstSig());
-                if (!methodsDict.TryGetValue(ifaceMethodRef, out var classMethod))
-                    continue;
-                _interfaceMethodInfos.AddMethodIfEmpty(ifaceInfo, ifaceMethod, classMethod);
-            }
+                foreach (var methodsList in ifaceInfo.TypeDef._virtualMethodInstances.GetMethods())
+                {
+                    if (methodsList.Count < 1)
+                        continue;
+                    var ifaceMethod = methodsList[0].OrigMethodDef;
+                    if (!ifaceMethod.IsVirtual())
+                        continue;
+                    var ifaceMethodRef =
+                        GenericArgsSubstitutor.Create(ifaceMethod.MethodDef, ifaceInfo.TypeRef.TryGetGenericInstSig());
+                    if (!methodsDict.TryGetValue(ifaceMethodRef, out var classMethod))
+                        continue;
+                    _interfaceMethodInfos.AddMethodIfEmpty(ifaceInfo, ifaceMethod, classMethod);
+                }
 
             methodsDict.Clear();
             var ifaceMethodsDict =
@@ -291,9 +291,9 @@ namespace NETReactorSlayer.De4dot.Renamer.AsmModules
             }
 
             foreach (var __ in from info in _interfaceMethodInfos.AllInfos
-                     from _ in info.IfaceMethodToClassMethod.Where(pair => pair.Value == null)
-                         .Where(_ => ResolvedAllInterfaces())
-                     select info)
+                               from _ in info.IfaceMethodToClassMethod.Where(pair => pair.Value == null)
+                                   .Where(_ => ResolvedAllInterfaces())
+                               select info)
                 ResolvedBaseClasses();
 
             foreach (var pair in _interfaceMethodInfos.AllInfos.SelectMany(info => info.IfaceMethodToClassMethod

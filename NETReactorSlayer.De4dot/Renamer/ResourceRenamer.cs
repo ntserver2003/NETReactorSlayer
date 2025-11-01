@@ -13,14 +13,14 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using de4dot.blocks;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 using NETReactorSlayer.De4dot.Renamer.AsmModules;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 
 namespace NETReactorSlayer.De4dot.Renamer
 {
@@ -63,8 +63,8 @@ namespace NETReactorSlayer.De4dot.Renamer
                 oldNameToTypeInfo[EscapeTypeName(info.OldFullName)] = info;
 
             foreach (var instrs in from method in _module.GetAllMethods()
-                     where method.HasBody
-                     select method.Body.Instructions)
+                                   where method.HasBody
+                                   select method.Body.Instructions)
                 for (var i = 0; i < instrs.Count; i++)
                 {
                     var instr = instrs[i];

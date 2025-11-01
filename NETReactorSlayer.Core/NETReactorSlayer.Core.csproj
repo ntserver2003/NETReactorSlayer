@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<Import Project="..\NETReactorSlayerCommon.props" />
 
@@ -6,11 +6,14 @@
 
 		<OutputPath>..\bin\$(Configuration)\</OutputPath>
 		<OutputType>Library</OutputType>
+		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+		<PlatformTarget>AnyCPU</PlatformTarget>
+		<TargetFrameworks>net48;net6.0;net7.0;net9.0;netcoreapp3.1</TargetFrameworks>
 
 	</PropertyGroup>
 
 	<ItemGroup>
-		
+
 		<Reference Include="de4dot.blocks" Condition="'$(IsDotNetFramework)' == 'true'">
 			<HintPath>..\Libs\net35\de4dot.blocks.dll</HintPath>
 		</Reference>
@@ -18,9 +21,8 @@
 			<HintPath>..\Libs\netcoreapp3.1\de4dot.blocks.dll</HintPath>
 		</Reference>
 		<ProjectReference Include="..\NETReactorSlayer.De4dot\NETReactorSlayer.De4dot.csproj" />
-		<PackageReference Include="System.IO.Compression" Version="4.3.0" />
-		<PackageReference Include="dnlib" Version="4.1.0" />
-		<PackageReference Include="Lib.Harmony" Version="2.2.2" />
+		<PackageReference Include="dnlib" Version="4.5.0" />
+		<PackageReference Include="Lib.Harmony" Version="2.3.6" />
 		<PackageReference Include="SharpZipLib" Version="1.4.2" />
 
 	</ItemGroup>

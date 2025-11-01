@@ -1,4 +1,4 @@
-﻿/*
+/*
     Copyright (C) 2021 CodeStrikers.org
     This file is part of NETReactorSlayer.
     NETReactorSlayer is free software: you can redistribute it and/or modify
@@ -13,13 +13,12 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-using System;
-using System.IO;
-using System.IO.Compression;
-using System.Linq;
-using System.Security.Cryptography;
 using dnlib.DotNet;
 using ICSharpCode.SharpZipLib.Zip.Compression;
+using System;
+using System.IO;
+using System.Linq;
+using System.Security.Cryptography;
 
 namespace NETReactorSlayer.Core.Helper
 {
@@ -89,21 +88,6 @@ namespace NETReactorSlayer.Core.Helper
             }
 
             return memStream.ToArray();
-        }
-
-        public static byte[] BrotliDecompress(byte[] data)
-        {
-#if (NETSTANDARD || NET)
-            var memoryStream = new MemoryStream();
-            using (var brotliStream = new BrotliStream(new MemoryStream(data), CompressionMode.Decompress))
-            {
-                brotliStream.CopyTo(memoryStream);
-            }
-            
-            return memoryStream.ToArray();
-#else
-            throw new ApplicationException("Brotli decompression not available on .NET Framework version. Use .NET6+ version");
-#endif
         }
     }
 }

@@ -3,27 +3,32 @@
 	<Import Project="..\NETReactorSlayerCommon.props" />
 
 	<PropertyGroup>
-
-		<Platform>AnyCPU</Platform>
+		<Platform>x86</Platform>
 		<OutputPath>..\bin\$(Configuration)\</OutputPath>
 		<OutputType>Exe</OutputType>
+		<TargetFrameworks>net9.0;net6.0;net7.0;net48;netcoreapp3.1</TargetFrameworks>
+		<PlatformTarget>x64</PlatformTarget>
 
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net7.0|AnyCPU'">
+	  <Prefer32Bit>False</Prefer32Bit>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net7.0|AnyCPU'">
+	  <Prefer32Bit>False</Prefer32Bit>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net48|AnyCPU'">
+	  <Prefer32Bit>False</Prefer32Bit>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net48|AnyCPU'">
+	  <Prefer32Bit>False</Prefer32Bit>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<ProjectReference Include="..\NETReactorSlayer.Core\NETReactorSlayer.Core.csproj" />
 	</ItemGroup>
-
-	<Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(IsDotNet)' == 'true'">
-
-		<Delete Files="$(OutputPath)\$(TargetName).exe" ContinueOnError="WarnAndContinue" />
-		<Delete Files="$(OutputPath)\$(TargetName).exe.config" ContinueOnError="WarnAndContinue" />
-		<Delete Files="$(OutputPath)\$(TargetName).runtimeconfig.dev.json" ContinueOnError="WarnAndContinue" />
-		<Delete Files="$(OutputPath)\$(TargetName).dll" ContinueOnError="WarnAndContinue" />
-		<Delete Files="$(OutputPath)\$(TargetName).pdb" ContinueOnError="WarnAndContinue" />
-		<Delete Files="$(OutputPath)\$(TargetName).runtimeconfig.json" ContinueOnError="WarnAndContinue" />
-		<Delete Files="$(OutputPath)\$(TargetName).deps.json" ContinueOnError="WarnAndContinue" />
-
-	</Target>
 
 </Project>

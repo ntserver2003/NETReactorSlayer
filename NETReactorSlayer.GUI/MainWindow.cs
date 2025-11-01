@@ -1,4 +1,4 @@
-﻿/*
+/*
     Copyright (C) 2021 CodeStrikers.org
     This file is part of NETReactorSlayer.
     NETReactorSlayer is free software: you can redistribute it and/or modify
@@ -13,6 +13,11 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+using dnlib.DotNet;
+using dnlib.PE;
+using NETReactorSlayer.GUI.Dialogs;
+using NETReactorSlayer.GUI.Properties;
+using NETReactorSlayer.GUI.UserControls;
 using System;
 using System.Diagnostics;
 using System.Drawing;
@@ -26,11 +31,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using dnlib.DotNet;
-using dnlib.PE;
-using NETReactorSlayer.GUI.Dialogs;
-using NETReactorSlayer.GUI.Properties;
-using NETReactorSlayer.GUI.UserControls;
 
 namespace NETReactorSlayer.GUI
 {
@@ -486,8 +486,8 @@ namespace NETReactorSlayer.GUI
                 chkPreserveAll.Checked = false;
 
             if ((from x in tabelOptions.Controls.OfType<NrsCheckBox>()
-                    where x.Name != "chkSelectUnSelectAll"
-                    select x).Any(control => !control.Checked))
+                 where x.Name != "chkSelectUnSelectAll"
+                 select x).Any(control => !control.Checked))
             {
                 _return = true;
                 chkSelectUnSelectAll.Checked = false;
@@ -515,19 +515,19 @@ namespace NETReactorSlayer.GUI
                 chkRename.Tag = "--dont-rename";
                 chkRename.Checked = false;
                 foreach (ToolStripMenuItem control in ctxRename.Items)
-                    control.Text = control.Text.Replace("✓", "X");
+                    control.Text = control.Text.Replace("?", "X");
             }
             else
             {
                 chkRename.Tag = "--rename --rename ntmfpe";
                 chkRename.Checked = true;
                 foreach (ToolStripMenuItem control in ctxRename.Items)
-                    control.Text = control.Text.Replace("X", "✓");
+                    control.Text = control.Text.Replace("X", "?");
             }
 
             foreach (var control in (from x in tabelOptions.Controls.OfType<NrsCheckBox>()
-                         where x.Name != "chkSelectUnSelectAll"
-                         select x).Where(control => control.Checked != @checked))
+                                     where x.Name != "chkSelectUnSelectAll"
+                                     select x).Where(control => control.Checked != @checked))
             {
                 _return = true;
                 control.Checked = @checked;
@@ -604,14 +604,14 @@ Website: CodeStrikers.org", "About .NETReactorSlayer", MsgBox.MsgButtons.Ok, Msg
                 return;
             tag = tag.Replace("--rename ", string.Empty).Replace("--dont-rename", string.Empty);
             var text = control.Text;
-            if (text.Contains("✓"))
+            if (text.Contains("?"))
             {
-                control.Text = text.Replace("✓", "X");
+                control.Text = text.Replace("?", "X");
                 chkRename.Tag = "--rename " + tag.Replace(option, string.Empty);
             }
             else if (text.Contains("X") && !tag.Contains(option))
             {
-                control.Text = text.Replace("X", "✓");
+                control.Text = text.Replace("X", "?");
                 chkRename.Tag = $"--rename {tag}{option}";
             }
 

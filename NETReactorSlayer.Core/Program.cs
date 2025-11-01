@@ -1,4 +1,4 @@
-﻿/*
+/*
     Copyright (C) 2021 CodeStrikers.org
     This file is part of NETReactorSlayer.
     NETReactorSlayer is free software: you can redistribute it and/or modify
@@ -13,6 +13,9 @@
     along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+using NETReactorSlayer.Core.Abstractions;
+using NETReactorSlayer.Core.Helper;
+using NETReactorSlayer.Core.Stages;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -20,9 +23,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using NETReactorSlayer.Core.Abstractions;
-using NETReactorSlayer.Core.Helper;
-using NETReactorSlayer.Core.Stages;
 
 namespace NETReactorSlayer.Core
 {

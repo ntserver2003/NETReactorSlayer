@@ -1,21 +1,11 @@
-﻿/*
-    Copyright (C) 2021 CodeStrikers.org
-    This file is part of NETReactorSlayer.
-    NETReactorSlayer is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-    NETReactorSlayer is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-    You should have received a copy of the GNU General Public License
-    along with NETReactorSlayer.  If not, see <http://www.gnu.org/licenses/>.
-*/
+
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using de4dot.blocks;
 using de4dot.blocks.cflow;
 using dnlib.DotNet;
@@ -24,7 +14,7 @@ using NETReactorSlayer.Core.Abstractions;
 
 namespace NETReactorSlayer.Core.Helper
 {
-    internal partial class EncryptedResource : IDisposable
+    internal class EncryptedResource : IDisposable
     {
         public EncryptedResource(IContext context, MethodDef method, IList<string> additionalTypes)
         {
@@ -72,6 +62,7 @@ namespace NETReactorSlayer.Core.Helper
             return null;
         }
 
+        public static string DecrypterVer = "";
         private IDecrypter GetDecrypter()
         {
             if (!DecrypterMethod.IsStatic || !DecrypterMethod.HasBody)
@@ -79,18 +70,41 @@ namespace NETReactorSlayer.Core.Helper
 
             var localTypes = new LocalTypes(DecrypterMethod);
 
-            if (DecrypterV1.CouldBeResourceDecrypter(DecrypterMethod, localTypes, AdditionalTypes))
-                return new DecrypterV1(DecrypterMethod);
+            //if (DecrypterV2.CouldBeResourceDecrypter(localTypes, AdditionalTypes))
+            //{
+            DecrypterV5 dec_v5 = new DecrypterV5(DecrypterMethod);
+            if (dec_v5.Initialize())
+            {
+                DecrypterVer = "V5 (trial)";
+                return dec_v5;
+            }
+            //}
 
+            if (DecrypterV1.CouldBeResourceDecrypter(DecrypterMethod, localTypes, AdditionalTypes))
+            {
+                DecrypterVer = "V1";
+                return new DecrypterV1(DecrypterMethod);
+            }
             if (DecrypterV3.CouldBeResourceDecrypter(localTypes, AdditionalTypes))
+            {
+                DecrypterVer = "V3";
                 return new DecrypterV3(DecrypterMethod);
+            }
 
             if (DecrypterV4.CouldBeResourceDecrypter(DecrypterMethod, localTypes, AdditionalTypes))
+            {
+                DecrypterVer = "V4";
                 return new DecrypterV4(DecrypterMethod);
+            }
 
-            return DecrypterV2.CouldBeResourceDecrypter(localTypes, AdditionalTypes)
-                ? new DecrypterV2(DecrypterMethod)
-                : null;
+            if (DecrypterV2.CouldBeResourceDecrypter(localTypes, AdditionalTypes))
+            {
+
+                DecrypterVer = "V2";
+                return new DecrypterV2(DecrypterMethod);
+            }
+
+            return null;
         }
 
         public static bool IsKnownDecrypter(MethodDef method, IList<string> additionalTypes, bool checkResource)
@@ -171,30 +185,6 @@ namespace NETReactorSlayer.Core.Helper
                 .Any(calledMethod => calledMethod.FullName.Contains(fullName));
         }
 
-        public static bool TryGetLdcValue(Instruction instruction, out int value)
-        {
-            value = 0;
-
-            if (!instruction.IsLdcI4() &&
-                !instruction.OpCode.Equals(OpCodes.Ldc_I8) &&
-                !instruction.OpCode.Equals(OpCodes.Ldc_R4) &&
-                !instruction.OpCode.Equals(OpCodes.Ldc_R8))
-                return false;
-
-            try
-            {
-                value = instruction.IsLdcI4() ?
-                    instruction.GetLdcI4Value() :
-                    Convert.ToInt32(instruction.Operand);
-
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
         public MethodDef DecrypterMethod { get; }
         public EmbeddedResource EmbeddedResource { get; private set; }
         private IList<string> AdditionalTypes { get; }
@@ -206,6 +196,1220 @@ namespace NETReactorSlayer.Core.Helper
         {
             byte[] Decrypt(EmbeddedResource resource);
         }
-        
+
+        #region Nested Types
+
+        private class DecrypterV1 : IDecrypter
+        {
+            public DecrypterV1(MethodDef method)
+            {
+                _key = GetDecryptionKey(method);
+                _iv = GetDecryptionIV(method);
+            }
+
+            public static bool CouldBeResourceDecrypter(MethodDef method, StringCounts stringCounts,
+                IEnumerable<string> additionalTypes)
+            {
+                var requiredTypes = new[]
+                {
+                    new List<string>
+                    {
+                        "System.Byte[]",
+                        "System.Security.Cryptography.CryptoStream",
+                        "System.Security.Cryptography.ICryptoTransform",
+                        "System.String",
+                        "System.Boolean"
+                    },
+                    new List<string>
+                    {
+                        "System.Security.Cryptography.ICryptoTransform",
+                        "System.IO.Stream",
+                        "System.Int32",
+                        "System.Byte[]",
+                        "System.Boolean"
+                    },
+                    new List<string>
+                    {
+                        "System.Security.Cryptography.ICryptoTransform",
+                        "System.Int32",
+                        "System.Byte[]",
+                        "System.Boolean"
+                    }
+                };
+                requiredTypes[0].AddRange(additionalTypes);
+
+                if (stringCounts.All(requiredTypes[0]) ||
+                    stringCounts.All(requiredTypes[1]) ||
+                    (stringCounts.All(requiredTypes[2]) && method.Body.Instructions.Any(x =>
+                        x.OpCode.Equals(OpCodes.Newobj) && x.Operand != null && x.Operand.ToString()!
+                            .Contains("System.Security.Cryptography.CryptoStream::.ctor"))))
+                    return DotNetUtils.GetMethod(method.DeclaringType,
+                        "System.Security.Cryptography.SymmetricAlgorithm",
+                        "()") == null || (!stringCounts.Exists("System.UInt64") &&
+                                          (!stringCounts.Exists("System.UInt32") ||
+                                           stringCounts.Exists("System.Reflection.Assembly")));
+
+                return false;
+            }
+
+            public byte[] Decrypt(EmbeddedResource resource) =>
+                DeobUtils.AesDecrypt(resource.CreateReader().ToArray(), _key, _iv);
+
+
+            private readonly byte[] _key, _iv;
+        }
+
+        private class DecrypterV2 : IDecrypter
+        {
+            public DecrypterV2(MethodDef method)
+            {
+                _key = GetDecryptionKey(method);
+                _iv = GetDecryptionIV(method);
+                _decrypterMethod = method;
+                _locals = new List<Local>(_decrypterMethod.Body.Variables);
+                if (!Initialize())
+                    throw new ApplicationException("Could not initialize decrypter V2");
+            }
+
+            public static bool CouldBeResourceDecrypter(StringCounts stringCounts,
+                IEnumerable<string> additionalTypes)
+            {
+                var requiredTypes = new List<string>
+                {
+                    "System.Int32",
+                    "System.Byte[]"
+                };
+                requiredTypes.AddRange(additionalTypes);
+                return stringCounts.All(requiredTypes);
+            }
+
+            public byte[] Decrypt(EmbeddedResource resource)
+            {
+                var encrypted = resource.CreateReader().ToArray();
+                var decrypted = new byte[encrypted.Length];
+                var sum = 0U;
+
+                if (_isNewDecrypter)
+                    for (var i = 0; i < encrypted.Length; i += 4)
+                    {
+                        var value = ReadUInt32(_key, i % _key.Length);
+                        sum += value + CalculateMagic(sum + value);
+                        WriteUInt32(decrypted, i, sum ^ ReadUInt32(encrypted, i));
+                    }
+                else
+                    for (var j = 0; j < encrypted.Length; j += 4)
+                    {
+                        sum = CalculateMagic(sum + ReadUInt32(_key, j % _key.Length));
+                        WriteUInt32(decrypted, j, sum ^ ReadUInt32(encrypted, j));
+                    }
+
+                return decrypted;
+            }
+
+            private bool Initialize()
+            {
+                var origInstrs = _decrypterMethod.Body.Instructions;
+                if (!Find(origInstrs, out var emuStartIndex, out var emuEndIndex, out _emuLocal) &&
+                    !FindStartEnd(origInstrs, out emuStartIndex, out emuEndIndex, out _emuLocal))
+                {
+                    if (!FindStartEnd2(ref origInstrs, out emuStartIndex, out emuEndIndex, out _emuLocal, out _emuArg,
+                            ref _emuMethod, ref _locals))
+                        return false;
+                    _isNewDecrypter = true;
+                }
+
+                if (!_isNewDecrypter)
+                    for (var i = 0; i < _iv.Length; i++)
+                    {
+                        var array = _key;
+                        array[i] ^= _iv[i];
+                    }
+
+                var count = emuEndIndex - emuStartIndex + 1;
+                _instructions = new List<Instruction>(count);
+                for (var j = 0; j < count; j++)
+                    _instructions.Add(origInstrs[emuStartIndex + j].Clone());
+                return true;
+            }
+
+            private Local CheckLocal(Instruction instr, bool isLdloc)
+            {
+                switch (isLdloc)
+                {
+                    case true when !instr.IsLdloc():
+                    case false when !instr.IsStloc():
+                        return null;
+                    default:
+                        return instr.GetLocal(_locals);
+                }
+            }
+
+            private bool Find(IList<Instruction> instrs, out int startIndex, out int endIndex, out Local tmpLocal)
+            {
+                startIndex = 0;
+                endIndex = 0;
+                tmpLocal = null;
+                if (!FindStart(instrs, out var emuStartIndex, out _emuLocal))
+                    return false;
+                if (!FindEnd(instrs, emuStartIndex, out var emuEndIndex))
+                    return false;
+
+                startIndex = emuStartIndex;
+                endIndex = emuEndIndex;
+                tmpLocal = _emuLocal;
+                return true;
+            }
+
+            private bool FindEnd(IList<Instruction> instrs, int startIndex, out int endIndex)
+            {
+                for (var i = startIndex; i < instrs.Count; i++)
+                {
+                    var instr = instrs[i];
+                    if (instr.OpCode.FlowControl != FlowControl.Next)
+                        break;
+                    if (!instr.IsStloc() || instr.GetLocal(_locals) != _emuLocal)
+                        continue;
+                    endIndex = i - 1;
+                    return true;
+                }
+
+                endIndex = 0;
+                return false;
+            }
+
+            // https://www.cnblogs.com/Fred1987/p/18603592
+            //copy from,https://gist.github.com/6rube/34b561827f0805f73742541b8b8bb770
+            [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+            static extern int MessageBox(IntPtr hWnd, String text, String caption, uint type);
+
+            private bool FindStart(IList<Instruction> instrs, out int startIndex, out Local tmpLocal)
+            {
+                var i = 0;
+                while (i + 8 < instrs.Count)
+                {
+                    Local local;
+                    if (instrs[i].OpCode.Code.Equals(Code.Conv_U) && instrs[i + 1].OpCode.Code.Equals(Code.Ldelem_U1) &&
+                        instrs[i + 2].OpCode.Code.Equals(Code.Or) && CheckLocal(instrs[i + 3], false) != null &&
+                        (local = CheckLocal(instrs[i + 4], true)) != null && CheckLocal(instrs[i + 5], true) != null &&
+                        instrs[i + 6].OpCode.Code.Equals(Code.Add) && CheckLocal(instrs[i + 7], false) == local)
+                    {
+
+                        var instr = instrs[i + 8];
+                        var newStartIndex = i + 8;
+                        if (instr.IsBr())
+                        {
+                            instr = instr.Operand as Instruction;
+                            newStartIndex = instrs.IndexOf(instr);
+                        }
+
+                        if (newStartIndex >= 0 && instr != null && CheckLocal(instr, true) == local)
+                        {
+                            startIndex = newStartIndex;
+                            tmpLocal = local;
+                            return true;
+                        }
+                    }
+
+                    i++;
+                }
+
+                startIndex = 0;
+                tmpLocal = null;
+                return false;
+            }
+
+            private bool FindStartEnd(IList<Instruction> instrs, out int startIndex, out int endIndex,
+                out Local tmpLocal)
+            {
+                var i = 0;
+                while (i + 8 < instrs.Count)
+                {
+                    if (instrs[i].OpCode.Code.Equals(Code.Conv_R_Un) &&
+                        instrs[i + 1].OpCode.Code.Equals(Code.Conv_R8) &&
+                        instrs[i + 2].OpCode.Code.Equals(Code.Conv_U4) &&
+                        instrs[i + 3].OpCode.Code.Equals(Code.Add))
+                    {
+                        var newEndIndex = i + 3;
+                        var newStartIndex = -1;
+                        for (var x = newEndIndex; x > 0; x--)
+                            if (instrs[x].OpCode.FlowControl != FlowControl.Next)
+                            {
+                                if (instrs[x].OpCode.Equals(OpCodes.Bne_Un) ||
+                                    instrs[x].OpCode.Equals(OpCodes.Bne_Un_S))
+                                {
+                                    _decrypterVersion = DecrypterVersion.V69;
+                                    continue;
+                                }
+
+                                break;
+                            }
+
+                        var ckStartIndex = -1;
+                        for (var y = newEndIndex; y >= 0; y--)
+                            if (instrs[y].IsBr())
+                            {
+                                if (instrs[y].Operand is not Instruction instr)
+                                    continue;
+                                if (instrs.IndexOf(instr) < y)
+                                {
+                                    if (instrs[y - 1].Operand is not Instruction)
+                                        continue;
+                                    instr = instrs[y - 1].Operand as Instruction;
+                                    if (instrs.IndexOf(instr) < y)
+                                        continue;
+                                }
+                                newStartIndex = instrs.IndexOf(instr);
+                                ckStartIndex = newStartIndex;
+                                break;
+                            }
+
+
+                        if (newStartIndex >= 0)
+                        {
+                            var checkLocs = new List<Local>();
+                            for (var y = newEndIndex; y >= newStartIndex; y--)
+                                if (CheckLocal(instrs[y], true) is { } loc)
+                                    if (!checkLocs.Contains(loc))
+                                        checkLocs.Add(loc);
+
+                            endIndex = newEndIndex;
+                            startIndex = Math.Max(ckStartIndex, newStartIndex);
+                            tmpLocal = CheckLocal(instrs[startIndex], true);
+                            return true;
+                        }
+                    }
+
+                    i++;
+                }
+
+                endIndex = 0;
+                startIndex = 0;
+                tmpLocal = null;
+                return false;
+            }
+
+            private static bool FindStartEnd2(ref IList<Instruction> instrs, out int startIndex, out int endIndex,
+                out Local tmpLocal, out Parameter tmpArg, ref MethodDef methodDef, ref List<Local> locals)
+            {
+                foreach (var instr in instrs)
+                {
+                    MethodDef method;
+                    if (!instr.OpCode.Equals(OpCodes.Call) || (method = instr.Operand as MethodDef) == null ||
+                        method.ReturnType.FullName != "System.Byte[]")
+                        continue;
+
+                    using var enumerator2 = DotNetUtils.GetMethodCalls(method).GetEnumerator();
+                    while (enumerator2.MoveNext())
+                    {
+                        MethodDef calledMethod;
+                        if ((calledMethod = enumerator2.Current as MethodDef) == null ||
+                            calledMethod.Parameters.Count != 2)
+                            continue;
+                        instrs = calledMethod.Body.Instructions;
+                        methodDef = calledMethod;
+                        locals = new List<Local>(calledMethod.Body.Variables);
+                        startIndex = 0;
+                        endIndex = instrs.Count - 1;
+                        tmpLocal = null;
+                        tmpArg = calledMethod.Parameters[1];
+                        return true;
+                    }
+                }
+
+                endIndex = 0;
+                startIndex = 0;
+                tmpLocal = null;
+                tmpArg = null;
+                return false;
+            }
+
+            private static uint ReadUInt32(byte[] ary, int index)
+            {
+                var sizeLeft = ary.Length - index;
+                if (sizeLeft >= 4)
+                    return BitConverter.ToUInt32(ary, index);
+                return sizeLeft switch
+                {
+                    1 => ary[index],
+                    2 => (uint)(ary[index] | (ary[index + 1] << 8)),
+                    3 => (uint)(ary[index] | (ary[index + 1] << 8) | (ary[index + 2] << 16)),
+                    _ => throw new ApplicationException("Can't read data")
+                };
+            }
+
+            private static void WriteUInt32(IList<byte> ary, int index, uint value)
+            {
+                var num = ary.Count - index;
+                if (num >= 1)
+                    ary[index] = (byte)value;
+                if (num >= 2)
+                    ary[index + 1] = (byte)(value >> 8);
+                if (num >= 3)
+                    ary[index + 2] = (byte)(value >> 16);
+                if (num >= 4)
+                    ary[index + 3] = (byte)(value >> 24);
+            }
+
+            private uint CalculateMagic(uint input)
+            {
+                if (_emuArg == null)
+                {
+                    _instrEmulator.Initialize(_decrypterMethod, _decrypterMethod.Parameters, _locals,
+                        _decrypterMethod.Body.InitLocals, false);
+                    _instrEmulator.SetLocal(_emuLocal, new Int32Value((int)input));
+                }
+                else
+                {
+                    _instrEmulator.Initialize(_emuMethod, _emuMethod.Parameters, _locals, _emuMethod.Body.InitLocals,
+                        false);
+                    _instrEmulator.SetArg(_emuArg, new Int32Value((int)input));
+                }
+
+                var index = 0;
+                while (index < _instructions.Count)
+                {
+                    try
+                    {
+                        if (_decrypterVersion != DecrypterVersion.V69)
+                            goto Emulate;
+                        if (!_instructions[index].IsLdloc())
+                            goto Emulate;
+                        if (!_instructions[index + 1].OpCode.Equals(OpCodes.Ldc_I4_0) &&
+                            (!_instructions[index + 1].IsLdcI4() || _instructions[index + 1].GetLdcI4Value() != 0))
+                            goto Emulate;
+                        if (!_instructions[index + 2].OpCode.Equals(OpCodes.Bne_Un) &&
+                            !_instructions[index + 2].OpCode.Equals(OpCodes.Bne_Un_S))
+                            goto Emulate;
+                        if (!_instructions[index + 3].IsLdloc())
+                            goto Emulate;
+                        if (!_instructions[index + 4].OpCode.Equals(OpCodes.Ldc_I4_1) &&
+                            (!_instructions[index + 4].IsLdcI4() || _instructions[index + 4].GetLdcI4Value() != 1))
+                            goto Emulate;
+                        if (!_instructions[index + 5].OpCode.Equals(OpCodes.Sub))
+                            goto Emulate;
+                        if (!_instructions[index + 6].IsStloc())
+                            goto Emulate;
+                        if (_instrEmulator.GetLocal(CheckLocal(_instructions[index + 6], false)
+                                .Index) is Int32Value local && local.Value != Int32Value.Zero.Value)
+                            index += 7;
+                    }
+                    catch { }
+
+                Emulate:
+                    _instrEmulator.Emulate(_instructions[index]);
+                    index++;
+                }
+
+                if (_instrEmulator.Pop() is not Int32Value tos || !tos.AllBitsValid())
+                    throw new ApplicationException("Couldn't calculate magic value");
+                return (uint)tos.Value;
+            }
+
+
+            private readonly InstructionEmulator _instrEmulator = new();
+            private readonly byte[] _key, _iv;
+            private readonly MethodDef _decrypterMethod;
+            private Parameter _emuArg;
+            private Local _emuLocal;
+            private MethodDef _emuMethod;
+            private List<Instruction> _instructions;
+            private bool _isNewDecrypter;
+            private List<Local> _locals;
+            private DecrypterVersion _decrypterVersion = DecrypterVersion.V6X;
+        }
+
+        private class DecrypterV3 : IDecrypter
+        {
+            public DecrypterV3(MethodDef method)
+            {
+                _decrypterMethod = method;
+                _locals = new List<Local>(_decrypterMethod.Body.Variables);
+                if (!Initialize())
+                    throw new ApplicationException("Could not initialize decrypter V3");
+            }
+
+            public static bool CouldBeResourceDecrypter(StringCounts stringCounts,
+                IEnumerable<string> additionalTypes)
+            {
+                var requiredTypes = new List<string>
+                {
+                    "System.Reflection.Emit.DynamicMethod",
+                    "System.Reflection.Emit.ILGenerator"
+                };
+                requiredTypes.AddRange(additionalTypes);
+                return stringCounts.All(requiredTypes);
+            }
+
+            public byte[] Decrypt(EmbeddedResource resource)
+            {
+                var encrypted = resource.CreateReader().ToArray();
+                var decrypted = new byte[encrypted.Length];
+                var sum = 0U;
+
+                for (var i = 0; i < encrypted.Length; i += 4)
+                {
+                    sum = CalculateMagic(sum);
+                    WriteUInt32(decrypted, i, sum ^ ReadUInt32(encrypted, i));
+                }
+
+                return decrypted;
+            }
+
+            private bool Initialize()
+            {
+                var origInstrs = _decrypterMethod.Body.Instructions;
+                if (!Find(origInstrs, out var emuStartIndex, out var emuEndIndex, out _emuLocal) &&
+                    !FindStartEnd(origInstrs, out emuStartIndex, out emuEndIndex, out _emuLocal))
+                    return false;
+                var count = emuEndIndex - emuStartIndex + 1;
+                _instructions = new List<Instruction>(count);
+                for (var i = 0; i < count; i++)
+                    _instructions.Add(origInstrs[emuStartIndex + i].Clone());
+                return true;
+            }
+
+            private uint CalculateMagic(uint input)
+            {
+                _instrEmulator.Initialize(_decrypterMethod, _decrypterMethod.Parameters, _locals,
+                    _decrypterMethod.Body.InitLocals, false);
+                _instrEmulator.SetLocal(_emuLocal, new Int32Value((int)input));
+
+                var index = 0;
+                while (index < _instructions.Count)
+                {
+                    try
+                    {
+                        if (_decrypterVersion != DecrypterVersion.V69)
+                            goto Emulate;
+                        if (!_instructions[index].IsLdloc())
+                            goto Emulate;
+                        if (!_instructions[index + 1].OpCode.Equals(OpCodes.Ldc_I4_0) &&
+                            (!_instructions[index + 1].IsLdcI4() || _instructions[index + 1].GetLdcI4Value() != 0))
+                            goto Emulate;
+                        if (!_instructions[index + 2].OpCode.Equals(OpCodes.Bne_Un) &&
+                            !_instructions[index + 2].OpCode.Equals(OpCodes.Bne_Un_S))
+                            goto Emulate;
+                        if (!_instructions[index + 3].IsLdloc())
+                            goto Emulate;
+                        if (!_instructions[index + 4].OpCode.Equals(OpCodes.Ldc_I4_1) &&
+                            (!_instructions[index + 4].IsLdcI4() || _instructions[index + 4].GetLdcI4Value() != 1))
+                            goto Emulate;
+                        if (!_instructions[index + 5].OpCode.Equals(OpCodes.Sub))
+                            goto Emulate;
+                        if (!_instructions[index + 6].IsStloc())
+                            goto Emulate;
+                        if (_instrEmulator.GetLocal(CheckLocal(_instructions[index + 6], false)
+                                .Index) is Int32Value local && local.Value != Int32Value.Zero.Value)
+                            index += 7;
+                    }
+                    catch { }
+
+                Emulate:
+                    _instrEmulator.Emulate(_instructions[index]);
+                    index++;
+                }
+
+                if (_instrEmulator.Pop() is not Int32Value tos || !tos.AllBitsValid())
+                    throw new ApplicationException("Couldn't calculate magic value");
+                return (uint)tos.Value;
+            }
+
+            private static uint ReadUInt32(byte[] ary, int index)
+            {
+                var sizeLeft = ary.Length - index;
+                if (sizeLeft >= 4)
+                    return BitConverter.ToUInt32(ary, index);
+                return sizeLeft switch
+                {
+                    1 => ary[index],
+                    2 => (uint)(ary[index] | (ary[index + 1] << 8)),
+                    3 => (uint)(ary[index] | (ary[index + 1] << 8) | (ary[index + 2] << 16)),
+                    _ => throw new ApplicationException("Can't read data")
+                };
+            }
+
+            private static void WriteUInt32(IList<byte> ary, int index, uint value)
+            {
+                var num = ary.Count - index;
+                if (num >= 1)
+                    ary[index] = (byte)value;
+                if (num >= 2)
+                    ary[index + 1] = (byte)(value >> 8);
+                if (num >= 3)
+                    ary[index + 2] = (byte)(value >> 16);
+                if (num >= 4)
+                    ary[index + 3] = (byte)(value >> 24);
+            }
+
+            private bool Find(IList<Instruction> instrs, out int startIndex, out int endIndex, out Local tmpLocal)
+            {
+                startIndex = 0;
+                endIndex = 0;
+                tmpLocal = null;
+                if (!FindStart(instrs, out var emuStartIndex, out _emuLocal))
+                    return false;
+                if (!FindEnd(instrs, emuStartIndex, out var emuEndIndex))
+                    return false;
+                startIndex = emuStartIndex;
+                endIndex = emuEndIndex;
+                tmpLocal = _emuLocal;
+                return true;
+            }
+
+            private bool FindEnd(IList<Instruction> instrs, int startIndex, out int endIndex)
+            {
+                for (var i = startIndex; i < instrs.Count; i++)
+                {
+                    var instr = instrs[i];
+                    if (instr.OpCode.FlowControl != FlowControl.Next)
+                        break;
+                    if (!instr.IsStloc() || instr.GetLocal(_locals) != _emuLocal)
+                        continue;
+                    endIndex = i - 1;
+                    return true;
+                }
+
+                endIndex = 0;
+                return false;
+            }
+
+            private bool FindStart(IList<Instruction> instrs, out int startIndex, out Local tmpLocal)
+            {
+                var i = 0;
+                while (i + 8 < instrs.Count)
+                {
+                    Local local;
+                    if (instrs[i].OpCode.Code.Equals(Code.Conv_U) && instrs[i + 1].OpCode.Code.Equals(Code.Ldelem_U1) &&
+                        instrs[i + 2].OpCode.Code.Equals(Code.Or) && CheckLocal(instrs[i + 3], false) != null &&
+                        (local = CheckLocal(instrs[i + 4], true)) != null && CheckLocal(instrs[i + 5], true) != null &&
+                        instrs[i + 6].OpCode.Code.Equals(Code.Add) && CheckLocal(instrs[i + 7], false) == local)
+                    {
+                        var instr = instrs[i + 8];
+                        var newStartIndex = i + 8;
+                        if (instr.IsBr())
+                        {
+                            instr = instr.Operand as Instruction;
+                            newStartIndex = instrs.IndexOf(instr);
+                        }
+
+                        if (newStartIndex >= 0 && instr != null && CheckLocal(instr, true) == local)
+                        {
+                            startIndex = newStartIndex;
+                            tmpLocal = local;
+                            return true;
+                        }
+                    }
+
+                    i++;
+                }
+
+                startIndex = 0;
+                tmpLocal = null;
+                return false;
+            }
+
+            private bool FindStartEnd(IList<Instruction> instrs, out int startIndex, out int endIndex,
+                out Local tmpLocal)
+            {
+                var i = 0;
+                while (i + 8 < instrs.Count)
+                {
+                    if (instrs[i].OpCode.Code.Equals(Code.Conv_R_Un) &&
+                        instrs[i + 1].OpCode.Code.Equals(Code.Conv_R8) &&
+                        instrs[i + 2].OpCode.Code.Equals(Code.Conv_U4) &&
+                        instrs[i + 3].OpCode.Code.Equals(Code.Add))
+                    {
+                        var newEndIndex = i + 3;
+                        var newStartIndex = -1;
+                        for (var x = newEndIndex; x > 0; x--)
+                            if (instrs[x].OpCode.FlowControl != FlowControl.Next)
+                            {
+                                if (instrs[x].OpCode.Equals(OpCodes.Bne_Un) ||
+                                    instrs[x].OpCode.Equals(OpCodes.Bne_Un_S))
+                                {
+                                    _decrypterVersion = DecrypterVersion.V69;
+                                    continue;
+                                }
+
+                                break;
+                            }
+
+                        var ckStartIndex = -1;
+                        for (var y = newEndIndex; y >= 0; y--)
+                            if (instrs[y].IsBr())
+                            {
+                                if (instrs[y].Operand is not Instruction instr)
+                                    continue;
+                                if (instrs.IndexOf(instr) < y)
+                                {
+                                    if (instrs[y - 1].Operand is not Instruction)
+                                        continue;
+                                    instr = instrs[y - 1].Operand as Instruction;
+                                    if (instrs.IndexOf(instr) < y)
+                                        continue;
+                                }
+                                newStartIndex = instrs.IndexOf(instr);
+                                ckStartIndex = newStartIndex;
+                                break;
+                            }
+
+
+                        if (newStartIndex >= 0)
+                        {
+                            var checkLocs = new List<Local>();
+                            for (var y = newEndIndex; y >= newStartIndex; y--)
+                                if (CheckLocal(instrs[y], true) is { } loc)
+                                    if (!checkLocs.Contains(loc))
+                                        checkLocs.Add(loc);
+
+                            endIndex = newEndIndex;
+                            startIndex = Math.Max(ckStartIndex, newStartIndex);
+                            tmpLocal = CheckLocal(instrs[startIndex], true);
+                            return true;
+                        }
+                    }
+
+                    i++;
+                }
+
+                endIndex = 0;
+                startIndex = 0;
+                tmpLocal = null;
+                return false;
+            }
+
+            private Local CheckLocal(Instruction instr, bool isLdloc)
+            {
+                switch (isLdloc)
+                {
+                    case true when !instr.IsLdloc():
+                    case false when !instr.IsStloc():
+                        return null;
+                    default:
+                        return instr.GetLocal(_locals);
+                }
+            }
+
+
+            private readonly InstructionEmulator _instrEmulator = new();
+            private readonly List<Local> _locals;
+            private readonly MethodDef _decrypterMethod;
+            private Local _emuLocal;
+            private List<Instruction> _instructions;
+            private DecrypterVersion _decrypterVersion = DecrypterVersion.V6X;
+        }
+
+        private class DecrypterV4 : IDecrypter
+        {
+            public DecrypterV4(MethodDef method)
+            {
+                if (!FindDecrypterMethod(method))
+                    throw new ApplicationException("Could not find decrypter method");
+
+                if (!FindEmulateMethod(_decrypterMethod))
+                    throw new ApplicationException("Could not find emulate method");
+
+                _key = GetDecryptionKey(_decrypterMethod);
+                _iv = GetDecryptionIV(_decrypterMethod);
+                _locals = new List<Local>(_emuMethod.Body.Variables);
+                if (!Initialize())
+                    throw new ApplicationException("Could not initialize decrypter V4");
+            }
+
+            public static bool CouldBeResourceDecrypter(MethodDef method, StringCounts stringCounts,
+                IEnumerable<string> additionalTypes)
+            {
+                var requiredTypes = new List<string>
+                {
+                    "System.Int32",
+                    "System.Byte[]"
+                };
+                requiredTypes.AddRange(additionalTypes);
+                if (!stringCounts.All(requiredTypes))
+                    return false;
+
+                var instrs = method.Body.Instructions;
+
+                return instrs.Where(instr => instr.OpCode == OpCodes.Newobj).Any(instr => instr.Operand is IMethod
+                {
+                    FullName: "System.Void System.Diagnostics.StackFrame::.ctor(System.Int32)"
+                });
+            }
+
+            public byte[] Decrypt(EmbeddedResource resource)
+            {
+                var encrypted = resource.CreateReader().ToArray();
+                var decrypted = new byte[encrypted.Length];
+
+                uint sum = 0;
+                for (var i = 0; i < encrypted.Length; i += 4)
+                {
+                    sum = CalculateMagic(sum + ReadUInt32(_key, i % _key.Length));
+                    WriteUInt32(decrypted, i, sum ^ ReadUInt32(encrypted, i));
+                }
+
+                return decrypted;
+            }
+
+            private bool FindDecrypterMethod(MethodDef method)
+            {
+                var instrs = method.Body.Instructions;
+                for (var i = 0; i < instrs.Count; i++)
+                {
+                    if (instrs[i].OpCode != OpCodes.Ldsfld)
+                        continue;
+                    if (instrs[i + 1].OpCode != OpCodes.Ldstr)
+                        continue;
+                    if (instrs[i + 2].OpCode != OpCodes.Callvirt)
+                        continue;
+                    if (instrs[i + 3].OpCode != OpCodes.Ldarg_0)
+                        continue;
+                    var call = instrs[i + 4];
+                    if (call.OpCode != OpCodes.Call)
+                        continue;
+
+                    _decrypterMethod = call.Operand as MethodDef;
+                    return true;
+                }
+
+                return false;
+            }
+
+            private bool FindEmulateMethod(MethodDef method)
+            {
+                var instrs = method.Body.Instructions;
+                for (var i = 0; i < instrs.Count; i++)
+                {
+                    if (instrs[i].OpCode != OpCodes.Newobj)
+                        continue;
+                    if (!instrs[i + 1].IsLdloc())
+                        continue;
+                    if (!instrs[i + 2].IsLdloc())
+                        continue;
+                    if (!instrs[i + 3].IsLdloc())
+                        continue;
+                    var call = instrs[i + 4];
+                    if (call.OpCode != OpCodes.Call)
+                        continue;
+
+                    _emuMethod = call.Operand as MethodDef;
+                    return true;
+                }
+
+                return false;
+            }
+
+            private bool Initialize()
+            {
+                var origInstrs = _emuMethod.Body.Instructions;
+
+                if (!Find(origInstrs, out var emuStartIndex, out var emuEndIndex, out _emuLocal))
+                    if (!FindStartEnd(origInstrs, out emuStartIndex, out emuEndIndex, out _emuLocal))
+                        return false;
+
+                for (var i = 0; i < _iv.Length; i++)
+                    _key[i] ^= _iv[i];
+
+                var count = emuEndIndex - emuStartIndex + 1;
+                _instructions = new List<Instruction>(count);
+                for (var i = 0; i < count; i++)
+                    _instructions.Add(origInstrs[emuStartIndex + i].Clone());
+
+                return true;
+            }
+
+            private bool Find(IList<Instruction> instrs, out int startIndex, out int endIndex, out Local tmpLocal)
+            {
+                startIndex = 0;
+                endIndex = 0;
+                tmpLocal = null;
+
+                if (!FindStart(instrs, out var emuStartIndex, out _emuLocal))
+                    return false;
+                if (!FindEnd(instrs, emuStartIndex, out var emuEndIndex))
+                    return false;
+                startIndex = emuStartIndex;
+                endIndex = emuEndIndex;
+                tmpLocal = _emuLocal;
+                return true;
+            }
+
+            private bool FindStartEnd(IList<Instruction> instrs, out int startIndex, out int endIndex,
+                out Local tmpLocal)
+            {
+                var i = 0;
+                while (i + 8 < instrs.Count)
+                {
+                    if (instrs[i].OpCode.Code.Equals(Code.Conv_R_Un) &&
+                        instrs[i + 1].OpCode.Code.Equals(Code.Conv_R8) &&
+                        instrs[i + 2].OpCode.Code.Equals(Code.Conv_U4) &&
+                        instrs[i + 3].OpCode.Code.Equals(Code.Add))
+                    {
+                        var newEndIndex = i + 3;
+                        var newStartIndex = -1;
+                        for (var x = newEndIndex; x > 0; x--)
+                            if (instrs[x].OpCode.FlowControl != FlowControl.Next)
+                            {
+                                if (instrs[x].OpCode.Equals(OpCodes.Bne_Un) ||
+                                    instrs[x].OpCode.Equals(OpCodes.Bne_Un_S))
+                                {
+                                    _decrypterVersion = DecrypterVersion.V69;
+                                    continue;
+                                }
+
+                                break;
+                            }
+
+                        var ckStartIndex = -1;
+                        for (var y = newEndIndex; y >= 0; y--)
+                            if (instrs[y].IsBr())
+                            {
+                                if (instrs[y].Operand is not Instruction instr)
+                                    continue;
+                                if (instrs.IndexOf(instr) < y)
+                                {
+                                    if (instrs[y - 1].Operand is not Instruction)
+                                        continue;
+                                    instr = instrs[y - 1].Operand as Instruction;
+                                    if (instrs.IndexOf(instr) < y)
+                                        continue;
+                                }
+                                newStartIndex = instrs.IndexOf(instr);
+                                ckStartIndex = newStartIndex;
+                                break;
+                            }
+
+
+                        if (newStartIndex >= 0)
+                        {
+                            var checkLocs = new List<Local>();
+                            for (var y = newEndIndex; y >= newStartIndex; y--)
+                                if (CheckLocal(instrs[y], true) is { } loc)
+                                    if (!checkLocs.Contains(loc))
+                                        checkLocs.Add(loc);
+
+                            endIndex = newEndIndex;
+                            startIndex = Math.Max(ckStartIndex, newStartIndex);
+                            tmpLocal = CheckLocal(instrs[startIndex], true);
+                            return true;
+                        }
+                    }
+
+                    i++;
+                }
+
+                endIndex = 0;
+                startIndex = 0;
+                tmpLocal = null;
+                return false;
+            }
+
+            private bool FindStart(IList<Instruction> instrs, out int startIndex, out Local tmpLocal)
+            {
+                for (var i = 0; i + 8 < instrs.Count; i++)
+                {
+                    if (instrs[i].OpCode.Code != Code.Conv_U)
+                        continue;
+                    if (instrs[i + 1].OpCode.Code != Code.Ldelem_U1)
+                        continue;
+                    if (instrs[i + 2].OpCode.Code != Code.Or)
+                        continue;
+                    if (CheckLocal(instrs[i + 3], false) == null)
+                        continue;
+                    Local local;
+                    if ((local = CheckLocal(instrs[i + 4], true)) == null)
+                        continue;
+                    if (CheckLocal(instrs[i + 5], true) == null)
+                        continue;
+                    if (instrs[i + 6].OpCode.Code != Code.Add)
+                        continue;
+                    if (CheckLocal(instrs[i + 7], false) != local)
+                        continue;
+                    var instr = instrs[i + 8];
+                    var newStartIndex = i + 8;
+                    if (instr.IsBr())
+                    {
+                        instr = instr.Operand as Instruction;
+                        newStartIndex = instrs.IndexOf(instr);
+                    }
+
+                    if (newStartIndex < 0 || instr == null)
+                        continue;
+                    if (CheckLocal(instr, true) != local)
+                        continue;
+
+                    startIndex = newStartIndex;
+                    tmpLocal = local;
+                    return true;
+                }
+
+                startIndex = 0;
+                tmpLocal = null;
+                return false;
+            }
+
+            private bool FindEnd(IList<Instruction> instrs, int startIndex, out int endIndex)
+            {
+                for (var i = startIndex; i < instrs.Count; i++)
+                {
+                    var instr = instrs[i];
+                    if (instr.OpCode.FlowControl != FlowControl.Next)
+                        break;
+                    if (!instr.IsStloc() || instr.GetLocal(_locals) != _emuLocal)
+                        continue;
+
+                    endIndex = i - 1;
+                    return true;
+                }
+
+                endIndex = 0;
+                return false;
+            }
+
+            private Local CheckLocal(Instruction instr, bool isLdloc)
+            {
+                switch (isLdloc)
+                {
+                    case true when !instr.IsLdloc():
+                    case false when !instr.IsStloc():
+                        return null;
+                    default:
+                        return instr.GetLocal(_locals);
+                }
+            }
+
+            private uint CalculateMagic(uint input)
+            {
+                _instrEmulator.Initialize(_emuMethod, _emuMethod.Parameters, _locals, _emuMethod.Body.InitLocals,
+                    false);
+                _instrEmulator.SetLocal(_emuLocal, new Int32Value((int)input));
+
+                var index = 0;
+                while (index < _instructions.Count)
+                {
+                    try
+                    {
+                        if (_decrypterVersion != DecrypterVersion.V69)
+                            goto Emulate;
+                        if (!_instructions[index].IsLdloc())
+                            goto Emulate;
+                        if (!_instructions[index + 1].OpCode.Equals(OpCodes.Ldc_I4_0) &&
+                            (!_instructions[index + 1].IsLdcI4() || _instructions[index + 1].GetLdcI4Value() != 0))
+                            goto Emulate;
+                        if (!_instructions[index + 2].OpCode.Equals(OpCodes.Bne_Un) &&
+                            !_instructions[index + 2].OpCode.Equals(OpCodes.Bne_Un_S))
+                            goto Emulate;
+                        if (!_instructions[index + 3].IsLdloc())
+                            goto Emulate;
+                        if (!_instructions[index + 4].OpCode.Equals(OpCodes.Ldc_I4_1) &&
+                            (!_instructions[index + 4].IsLdcI4() || _instructions[index + 4].GetLdcI4Value() != 1))
+                            goto Emulate;
+                        if (!_instructions[index + 5].OpCode.Equals(OpCodes.Sub))
+                            goto Emulate;
+                        if (!_instructions[index + 6].IsStloc())
+                            goto Emulate;
+                        if (_instrEmulator.GetLocal(CheckLocal(_instructions[index + 6], false)
+                                .Index) is Int32Value local && local.Value != Int32Value.Zero.Value)
+                            index += 7;
+                    }
+                    catch { }
+
+                Emulate:
+                    _instrEmulator.Emulate(_instructions[index]);
+                    index++;
+                }
+
+                if (_instrEmulator.Pop() is not Int32Value tos || !tos.AllBitsValid())
+                    throw new ApplicationException("Couldn't calculate magic value");
+                return (uint)tos.Value;
+            }
+
+            private static uint ReadUInt32(byte[] ary, int index)
+            {
+                var sizeLeft = ary.Length - index;
+                if (sizeLeft >= 4)
+                    return BitConverter.ToUInt32(ary, index);
+                return sizeLeft switch
+                {
+                    1 => ary[index],
+                    2 => (uint)(ary[index] | (ary[index + 1] << 8)),
+                    3 => (uint)(ary[index] | (ary[index + 1] << 8) | (ary[index + 2] << 16)),
+                    _ => throw new ApplicationException("Can't read data")
+                };
+            }
+
+            private static void WriteUInt32(IList<byte> ary, int index, uint value)
+            {
+                var sizeLeft = ary.Count - index;
+                if (sizeLeft >= 1)
+                    ary[index] = (byte)value;
+                if (sizeLeft >= 2)
+                    ary[index + 1] = (byte)(value >> 8);
+                if (sizeLeft >= 3)
+                    ary[index + 2] = (byte)(value >> 16);
+                if (sizeLeft >= 4)
+                    ary[index + 3] = (byte)(value >> 24);
+            }
+
+
+            private readonly byte[] _key, _iv;
+            private MethodDef _decrypterMethod;
+            private MethodDef _emuMethod;
+            private List<Instruction> _instructions;
+            private readonly List<Local> _locals;
+            private readonly InstructionEmulator _instrEmulator = new();
+            private Local _emuLocal;
+            private DecrypterVersion _decrypterVersion = DecrypterVersion.V6X;
+        }
+
+
+        private class DecrypterV5 : IDecrypter
+        {
+            public DecrypterV5(MethodDef method)
+            {
+                _key = GetDecryptionKey(method);
+                _iv = GetDecryptionIV(method);
+                _decrypterMethod = method;
+                //_locals = new List<Local>(_decrypterMethod.Body.Variables);
+                //if (!Initialize())
+                //   throw new ApplicationException("Could not initialize decrypter V5");
+            }
+
+            public static bool CouldBeResourceDecrypter(StringCounts stringCounts,
+                IEnumerable<string> additionalTypes)
+            {
+                var requiredTypes = new List<string>
+                {
+                    "System.Int32",
+                    "System.Byte[]"
+                };
+                requiredTypes.AddRange(additionalTypes);
+                return stringCounts.All(requiredTypes);
+            }
+
+            public unsafe byte[] Decrypt(EmbeddedResource resource)
+            {
+                byte[] encrypted = resource.CreateReader().ToArray();
+                byte[] decrypted = new byte[encrypted.Length];
+                uint sum = 0U;
+
+                byte[] new_key = null;
+                if (_key != null && _iv != null)
+                {
+                    new_key = _key;
+                    for (int i = 0; i < _iv.Length; i++)
+                    {
+                        new_key[i] ^= _iv[i];
+                    }
+                }
+
+                for (var i = 0; i < encrypted.Length; i += 4)
+                {
+                    if (new_key != null)
+                        sum += ReadUInt32(new_key, i % new_key.Length);
+
+                    sum += Enc_key;
+                    WriteUInt32(decrypted, i, sum ^ ReadUInt32(encrypted, i));
+                }
+
+
+
+
+
+                return decrypted;
+            }
+
+            public bool Initialize()
+            {
+                var origInstrs = _decrypterMethod.Body.Instructions;
+
+                // IL_0DB6: ldloc.s V_60
+                // IL_0DB8: stloc.s V_60
+                // IL_0DBA: ldloc.s V_60
+                // IL_0DBC: ldc.i4    702695222
+                // IL_0DC1: add
+                // IL_0DC2: stloc.s V_60
+                for (int i = 0; i < origInstrs.Count - 11; i++)
+                {
+                    if (origInstrs[i].IsLdloc() && origInstrs[i + 1].IsStloc() &&
+                        origInstrs[i + 2].IsLdloc() && origInstrs[i + 3].IsLdcI4() &&
+                        origInstrs[i + 4].OpCode == OpCodes.Add && origInstrs[i + 5].IsStloc())
+                    {
+                        Local local1 = origInstrs[i].GetLocal(_decrypterMethod.Body.Variables);
+                        if (local1 == null) continue;
+                        Local local2 = origInstrs[i + 1].GetLocal(_decrypterMethod.Body.Variables);
+                        if (local2 == null || local1 != local2) continue;
+                        Local local3 = origInstrs[i + 2].GetLocal(_decrypterMethod.Body.Variables);
+                        if (local3 == null || local1 != local3) continue;
+                        Local local4 = origInstrs[i + 5].GetLocal(_decrypterMethod.Body.Variables);
+                        if (local4 == null || local1 != local4) continue;
+
+                        Enc_key = (uint)origInstrs[i + 3].GetLdcI4Value();
+                        //MessageBox(new IntPtr(0), Enc_key.ToString(), "MessageBox", 0);
+
+                        return true;
+
+
+                    }
+
+                    if (origInstrs[i].IsLdcI4() &&
+        origInstrs[i + 1].OpCode == OpCodes.Add && origInstrs[i + 2].IsStloc() &&
+        origInstrs[i + 3].IsLdloc() && origInstrs[i + 4].IsLdloc() && origInstrs[i + 5].OpCode == OpCodes.Ldc_I4_1 &&
+        origInstrs[i + 6].OpCode == OpCodes.Sub && (origInstrs[i + 7].OpCode == OpCodes.Bne_Un || origInstrs[i + 7].OpCode == OpCodes.Bne_Un_S) &&
+        origInstrs[i + 8].IsLdloc() && origInstrs[i + 9].OpCode == OpCodes.Ldc_I4_0 && (origInstrs[i + 10].OpCode == OpCodes.Ble || origInstrs[i + 10].OpCode == OpCodes.Ble_S))
+                    {
+                        Enc_key = (uint)origInstrs[i].GetLdcI4Value();
+                        //MessageBox(new IntPtr(0), Enc_key.ToString(), "MessageBox", 0);
+
+                        return true;
+                    }
+
+
+                }
+                return false;
+            }
+
+            // https://www.cnblogs.com/Fred1987/p/18603592
+            //copy from,https://gist.github.com/6rube/34b561827f0805f73742541b8b8bb770
+            [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+            static extern int MessageBox(IntPtr hWnd, String text, String caption, uint type);
+
+            private static uint ReadUInt32(byte[] ary, int index)
+            {
+                var sizeLeft = ary.Length - index;
+                if (sizeLeft >= 4)
+                    return BitConverter.ToUInt32(ary, index);
+                return sizeLeft switch
+                {
+                    1 => ary[index],
+                    2 => (uint)(ary[index] | (ary[index + 1] << 8)),
+                    3 => (uint)(ary[index] | (ary[index + 1] << 8) | (ary[index + 2] << 16)),
+                    _ => throw new ApplicationException("Can't read data")
+                };
+            }
+
+            private static void WriteUInt32(IList<byte> ary, int index, uint value)
+            {
+                var num = ary.Count - index;
+                if (num >= 1)
+                    ary[index] = (byte)value;
+                if (num >= 2)
+                    ary[index + 1] = (byte)(value >> 8);
+                if (num >= 3)
+                    ary[index + 2] = (byte)(value >> 16);
+                if (num >= 4)
+                    ary[index + 3] = (byte)(value >> 24);
+            }
+
+            private uint Enc_key;
+            private readonly byte[] _key, _iv;
+            private readonly MethodDef _decrypterMethod;
+            //private List<Instruction> _instructions;
+            //private bool _isNewDecrypter;
+            //private List<Local> _locals;
+            //private DecrypterVersion _decrypterVersion = DecrypterVersion.V6X;
+        }
+
+        #endregion
     }
 }
